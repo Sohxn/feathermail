@@ -5,6 +5,7 @@ from services.gmail_service import GmailService
 from services.supa_auth import SupabaseService
 import os
 import logging 
+from services.gmail_push import GmailPushService
 
 
 #testing
@@ -28,10 +29,43 @@ supabase_service = SupabaseService(
 )
 
 
+
+#### CHECKS #####
+# 1.
 # ── HEALTH ────────────────────────────────────────────────────────────────
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({'status': 'healthy', 'service': 'pigeon-backend'})
+
+# 2.
+# RENDER CRON JOB TO KEEP GMAIL WATCH AWAKE
+@app.route('/api/gmail/renew-watches', methods=['POST'])
+def renew_watches():
+    """Call this daily to keep push notifications alive."""
+    try:
+        accounts = supabase_service.client.table('email_accounts')\
+            .select('*')\
+            .eq('is_connected', True)\
+            .execute()
+        
+        push_service = GmailPushService(gmail_service)
+        renewed = 0
+        
+        for account in accounts.data:
+            push_service.watch_inbox(
+                user_email=account['email_address'],
+                access_token=account['access_token'],
+                refresh_token=account['refresh_token']
+            )
+            renewed += 1
+        
+        return jsonify({'success': True, 'renewed': renewed})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+
+
 
 
 # ── OAUTH CALLBACK ────────────────────────────────────────────────────────
