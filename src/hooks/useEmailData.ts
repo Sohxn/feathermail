@@ -4,7 +4,7 @@
  * Syncs with backend
  */
 
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useEmailStore } from '@/store/emailStore';
 import * as api from '@/services/apiClient';
 import { toast } from 'sonner';
@@ -88,7 +88,7 @@ export function useEmailData() {
    * Sync emails from Gmail
    * Called when user clicks "Sync" button
    */
-  const syncSilent = async () => {
+  const syncSilent = useCallback(async () => {
     if (isDev) return;
     try {
         const result = await api.syncEmails();
@@ -98,7 +98,7 @@ export function useEmailData() {
         console.error('Background sync failed:', error);
         // silent — don't toast on background sync
     }
-  };  
+  }, []);  
 
   const sync = async () => {
     if (isDev) { toast.info('dev mode: loading mock emails'); return; }
@@ -115,11 +115,12 @@ export function useEmailData() {
         store.setSyncing(false);
     }
   };
-  
+
   
   return {
     loadData,
     sync,
+    syncSilent,
     isLoading: store.isLoading,
     isSyncing: store.isSyncing,
     error: store.error,

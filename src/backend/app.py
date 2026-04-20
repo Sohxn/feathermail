@@ -151,7 +151,7 @@ def sync_gmail():
 
         total_saved = 0
 
-        for account in accounts:
+        for account in accounts: 
             email_address = account.get('email_address', account['id'])
             history_id = account.get('last_history_id')
 
