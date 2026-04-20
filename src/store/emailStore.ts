@@ -69,6 +69,11 @@ interface EmailState {
   isLoading: boolean;
   isSyncing: boolean;
   error: string | null;
+
+  cursor: string | null;       // received_at of the last loaded email
+  hasMore: boolean;            // false when we've hit the end
+  appendEmails: (emails: Email[]) => void;  // adds to existing list
+  resetPagination: () => void; // call when switching folders/accounts
   
   // Actions (functions to modify state)
   setAccounts: (accounts: EmailAccount[]) => void;
@@ -79,6 +84,7 @@ interface EmailState {
   setLoading: (loading: boolean) => void;
   setSyncing: (syncing: boolean) => void;
   setError: (error: string | null) => void;
+  setHasMore: (val: boolean) => void;
   
   // Email Operations
   markEmailAsRead: (emailId: string) => void;
@@ -90,6 +96,8 @@ interface EmailState {
   getFilteredEmails: () => Email[];
   getSelectedEmail: () => Email | null;
   getFolderCounts: () => Record<string, number>;
+
+  
 }
 
 // ============================================================
@@ -107,6 +115,26 @@ export const useEmailStore = create<EmailState>()(
     isLoading: false,
     isSyncing: false,
     error: null,
+    cursor: null,
+    hasMore: true,
+
+    // implementation
+    setHasMore: (val) => set({ hasMore: val }),
+
+    appendEmails: (newEmails) =>
+    set((state) => {
+      // Avoid duplicates if the same email comes in via Realtime AND pagination
+      const existingIds = new Set(state.emails.map(e => e.id));
+      const fresh = newEmails.filter(e => !existingIds.has(e.id));
+      state.emails.push(...fresh);
+      // Update cursor to the oldest email we've seen
+      if (fresh.length > 0) {
+        state.cursor = fresh[fresh.length - 1].received_at;
+      }
+  }),
+
+  resetPagination: () =>
+  set({ emails: [], cursor: null, hasMore: true }),
     
     // Simple setters - update one piece of state
     setAccounts: (accounts) => set({ accounts }),

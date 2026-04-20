@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useRef, useEffect, useMemo, useState, useCallback} from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useEmailData } from "@/hooks/useEmailData";
@@ -16,7 +16,11 @@ type MobilePanel = "sidebar" | "list" | "email";
 
 export default function Index() {
   const navigate = useNavigate();
-  const { loadData, sync, syncSilent, isLoading, isSyncing } = useEmailData();
+  const { loadData, sync, syncSilent, loadMore, isLoading, isSyncing } = useEmailData();
+  
+  // sentinel
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  
   const { isAuthenticated, loading: authLoading } = useAuth();
 
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("list");
@@ -72,6 +76,29 @@ export default function Index() {
       trash:   base.filter(e => e.is_trashed).length,
     };
   }, [allEmails, selectedAccountId]);
+
+
+
+    // useEffect
+    useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // When the sentinel becomes visible, load next page
+        if (entries[0].isIntersecting) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 } // fire when 10% of sentinel is visible
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loadMore]);
+
+
 
   useEffect(() => {
     if (emails.length === 0) {
@@ -194,14 +221,26 @@ export default function Index() {
               </button>
             </div>
           ) : (
-            emails.map(email => (
-              <EmailListItem
-                key={email.id}
-                email={email}
-                isSelected={email.id === selectedEmailId}
-                onClick={() => { setSelectedEmailId(email.id); setMobilePanel("email"); }}
-              />
-            ))
+            <>
+              {emails.map(email => (
+                <EmailListItem
+                  key={email.id}
+                  email={email}
+                  isSelected={email.id === selectedEmailId}
+                  onClick={() => { setSelectedEmailId(email.id); setMobilePanel("email"); }}
+                />
+              ))}
+
+              {/* Sentinel — invisible div that triggers load more */}
+              <div ref={sentinelRef} className="h-4 w-full" />
+
+              {/* Show a small spinner while loading next page */}
+              {isSyncing && (
+                <div className="flex justify-center py-4">
+                  <div className="w-5 h-5 border-2 border-foreground/20 border-t-foreground rounded-full animate-spin" />
+                </div>
+              )}
+            </>
           )}
 
           {/* FAB — mobile only, bottom-right of the list panel */}

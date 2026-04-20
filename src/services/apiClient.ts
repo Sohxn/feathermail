@@ -195,6 +195,33 @@ export async function fetchEmails() {
   return data;
 }
 
+
+/**
+PAGINATION
+**/
+export async function fetchEmailsPage(cursor: string | null, limit = 15) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Not authenticated');
+
+  let query = supabase
+    .from('emails')
+    .select('*, email_accounts(email_address, provider)')
+    .eq('user_id', user.id)
+    .order('received_at', { ascending: false })
+    .limit(limit);
+
+  // If we have a cursor, only fetch emails older than it
+  if (cursor) {
+    query = query.lt('received_at', cursor);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data;
+}
+
+
+
 /**
  * Sync emails from Gmail API to database
  * This is SLOW - fetches from Gmail, then saves to Supabase
