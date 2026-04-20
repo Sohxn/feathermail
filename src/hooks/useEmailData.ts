@@ -88,37 +88,34 @@ export function useEmailData() {
    * Sync emails from Gmail
    * Called when user clicks "Sync" button
    */
-  const sync = async () => {
-
-    // dev mode
-    if(isDev){
-      toast.info('dev mode: loading mock emails')
-      return;
-    }
-
-
+  const syncSilent = async () => {
+    if (isDev) return;
     try {
-      store.setSyncing(true);
-      
-      const result = await api.syncEmails();
-      
-      // Reload emails after sync
-      const emails = await api.fetchEmails();
-      store.setEmails(emails);
-      
-      if (result.synced > 0) {
-        toast.success(`Synced ${result.synced} new emails`);
-      } else {
-        toast.info('No new emails');
-      }
-      
+        const result = await api.syncEmails();
+        const emails = await api.fetchEmails();
+        store.setEmails(emails);
     } catch (error: any) {
-      console.error('Sync failed:', error);
-      toast.error('Failed to sync emails');
+        console.error('Background sync failed:', error);
+        // silent — don't toast on background sync
+    }
+  };  
+
+  const sync = async () => {
+    if (isDev) { toast.info('dev mode: loading mock emails'); return; }
+    try {
+        store.setSyncing(true);
+        const result = await api.syncEmails();
+        const emails = await api.fetchEmails();
+        store.setEmails(emails);
+        if (result.synced > 0) toast.success(`Synced ${result.synced} new emails`);
+        else toast.info('No new emails');
+    } catch (error: any) {
+        toast.error('Failed to sync emails');
     } finally {
-      store.setSyncing(false);
+        store.setSyncing(false);
     }
   };
+  
   
   return {
     loadData,

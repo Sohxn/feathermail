@@ -155,18 +155,19 @@ def sync_gmail():
             email_address = account.get('email_address', account['id'])
             history_id = account.get('last_history_id')
 
-            # ── Check if this account actually has emails in the DB ───────
-            existing = supabase_service.client.table('emails')\
-                .select('id')\
-                .eq('account_id', account['id'])\
-                .limit(1)\
-                .execute()
-            has_emails = len(existing.data) > 0
+            # Check if this account actually has emails in the DB
+            # existing = supabase_service.client.table('emails')\
+            #     .select('id')\
+            #     .eq('account_id', account['id'])\
+            #     .limit(1)\
+            #     .execute()
+            # has_emails = len(existing.data) > 0
 
-            # ── Choose sync strategy ──────────────────────────────────────
-            # Only do incremental if we BOTH have a history_id AND already
-            # have emails stored. If the DB was wiped, force a full sync.
-            if history_id and has_emails:
+
+            # Choose sync strategy
+            # Only do incremental if we BOTH have a history_id i.e if it has mails already
+            # If the DB was wiped or fresh account, force a full sync.
+            if history_id:
                 result = gmail_service.fetch_emails_incremental(
                     access_token=account['access_token'],
                     refresh_token=account['refresh_token'],

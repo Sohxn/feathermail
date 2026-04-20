@@ -8,6 +8,8 @@ from email.mime.multipart import MIMEMultipart
 import re
 from email.utils import parsedate_to_datetime
 from html2text import html2text
+#multithreading 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 class GmailService:
@@ -94,11 +96,15 @@ class GmailService:
 
             messages = results.get('messages', [])
 
-            emails = []
-            for msg in messages:
-                email_data = self._get_email_details(service, msg['id'])
-                if email_data:
-                    emails.append(email_data)
+            # emails = []
+            # for msg in messages:
+            #     email_data = self._get_email_details(service, msg['id'])
+            #     if email_data:
+            #         emails.append(email_data)
+
+            # optimised block
+            message_ids = [msg['id'] for msg in messages]
+            emails = self.fetch_details_parallel(service, message_ids) #using the optmisation function 
 
             # Grab current historyId so next sync can be incremental
             profile = service.users().getProfile(userId='me').execute()
@@ -150,11 +156,14 @@ class GmailService:
             new_history_id = history_response.get('historyId', start_history_id)
 
             # Fetch full details for each new message
-            emails = []
-            for msg_id in new_message_ids:
-                email_data = self._get_email_details(service, msg_id)
-                if email_data:
-                    emails.append(email_data)
+            # emails = []
+            # for msg_id in new_message_ids:
+            #     email_data = self._get_email_details(service, msg_id)
+            #     if email_data:
+            #         emails.append(email_data)
+
+            # optimised block
+            emails = self.fetch_details_parallel(service, list(new_message_ids))
 
             print(f"Incremental sync: {len(emails)} new emails since historyId={start_history_id}, new historyId={new_history_id}", flush=True)
             return {'emails': emails, 'history_id': new_history_id, 'is_full_sync': False}
@@ -282,3 +291,15 @@ class GmailService:
             return {'success': True, 'message_id': sent['id']}
         except HttpError as error:
             return {'success': False, 'error': str(error)}
+
+
+    # optimisation and multithreading
+    def fetch_details_parallel(self, service, message_ids, max_workers=10):
+        emails = []
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(self._get_email_details, service, mid): mid for mid in message_ids}
+            for future in as_completed(futures):
+                result = future.result()
+                if result:
+                    emails.append(result)
+        return emails

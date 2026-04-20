@@ -16,7 +16,7 @@ type MobilePanel = "sidebar" | "list" | "email";
 
 export default function Index() {
   const navigate = useNavigate();
-  const { loadData, sync, isLoading, isSyncing } = useEmailData();
+  const { loadData, sync, syncSilent, isLoading, isSyncing } = useEmailData();
   const { isAuthenticated, loading: authLoading } = useAuth();
 
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("list");
@@ -85,19 +85,21 @@ export default function Index() {
     }
   }, [emails, selectedEmailId, setSelectedEmailId]);
 
+
+  // show db mails instantly 
+  // sync occurs in the background silently 
   useEffect(() => {
     if (authLoading) return;
     if (!isAuthenticated) { navigate("/login"); return; }
     loadData();
-    const t = setTimeout(() => sync(), 2000);
-    return () => clearTimeout(t);
+    syncSilent(); 
   }, [isAuthenticated, authLoading, navigate]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    const id = setInterval(() => sync(), 30000);
+    const id = setInterval(() => syncSilent(), 30000);
     return () => clearInterval(id);
-  }, [isAuthenticated, sync]);
+  }, [isAuthenticated, syncSilent]);
 
   useEffect(() => {
     if (!isAuthenticated || isDev) return;
