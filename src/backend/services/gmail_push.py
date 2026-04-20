@@ -8,11 +8,12 @@ class GmailPushService:
         
     def watch_inbox(self, user_email, access_token, refresh_token):
         service = self.gmail_service.get_gmail_service(access_token, refresh_token)
+        #crosscheck envs once
         project_id = os.getenv('GOOGLE_CLOUD_PROJECT_ID')
 
         request = {
             'labelIds': ['INBOX'],
-            'topicName': f'projects/{GOOGLE_CLOUD_PROJECT_ID}/topics/gmail-push'  # You create this once
+            'topicName': f'projects/{project_id}/topics/gmail-push'  # You create this once
         }
 
         result = service.users().watch(userId='me', body=request).execute()
@@ -20,4 +21,4 @@ class GmailPushService:
         #logging
         print(f"Watch set for {user_email}: expiry={result.get('expiration')}", flush=True)
 
-        return 
+        return result

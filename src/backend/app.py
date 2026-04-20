@@ -6,7 +6,8 @@ from services.supa_auth import SupabaseService
 import os
 import logging 
 from services.gmail_push import GmailPushService
-
+import json 
+import base64
 
 #testing
 app = Flask(__name__)
@@ -39,6 +40,10 @@ def health():
 
 # 2.
 # RENDER CRON JOB TO KEEP GMAIL WATCH AWAKE
+
+# NOTE: remove the cron job when stable and replace with self contained flask function 
+# 
+#  
 @app.route('/api/gmail/renew-watches', methods=['POST'])
 def renew_watches():
     """Call this daily to keep push notifications alive."""
