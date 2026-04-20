@@ -25,7 +25,7 @@ export default function EmailListItem({ email, isSelected, onClick }: EmailListI
       onClick={onClick}
       // "glass" is the base class from App.css
       // "selected" is the modifier — must be a plain class name, not a Tailwind utility
-      className={`glass${isSelected ? " selected" : ""} mx-1 my-2 rounded-2xl p-4 cursor-pointer`}
+      className={`${isSelected ? " selected" : ""} mx-1 my-2 rounded-2xl p-4 cursor-pointer`}
     >
       <div className="flex items-start justify-between mb-1">
         <div className="flex items-center gap-2 flex-1 min-w-0">
