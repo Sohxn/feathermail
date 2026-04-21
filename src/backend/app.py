@@ -10,6 +10,8 @@ import json
 import base64
 from services.imap_service import ImapService
 import threading
+import gc
+import time #just in case 
 
 #testing
 app = Flask(__name__)
@@ -179,53 +181,117 @@ def gmail_oauth_callback():
 
 # ── SYNC ──────────────────────────────────────────────────────────────────
 def run_initial_gmail_backfill(user_id: str, account: dict):
-    """Backfill historical Gmail inbox for a newly connected account in the background."""
+    """
+    Memory-safe backfill for newly connected accounts.
+    
+    Instead of loading everything into RAM at once:
+    - Collect ALL message IDs first (just strings, ~50 bytes each)
+    - Process in chunks of 25 with 2 workers max
+    - Sleep between chunks to let GC breathe
+    - Signal frontend via backfill_complete flag when done
+    """
     try:
-        account_id = account['id']
+        account_id    = account['id']
         email_address = account['email_address']
-        access_token = account['access_token']
+        access_token  = account['access_token']
         refresh_token = account['refresh_token']
 
-        total_saved = 0
+        # ── Step 1: Collect all message IDs (no bodies, very lightweight) ──
+        print(f"{email_address}: collecting message IDs for backfill...", flush=True)
+        all_message_ids = []
         page_token = None
 
+        service = gmail_service.get_gmail_service(access_token, refresh_token)
+
         while True:
-            result = gmail_service.fetch_emails_full(
-                access_token=access_token,
-                refresh_token=refresh_token,
-                max_results=500,
-                page_token=page_token
-            )
+            kwargs = {
+                'userId': 'me',
+                'q': 'in:inbox',
+                'maxResults': 500,  # max allowed by Gmail — ID-only list is tiny
+            }
+            if page_token:
+                kwargs['pageToken'] = page_token
 
-            emails_to_save = []
-            for email_data in result.get('emails', []):
-                email_data['user_id'] = user_id
-                email_data['account_id'] = account_id
-                emails_to_save.append(email_data)
+            results = service.users().messages().list(**kwargs).execute()
+            messages = results.get('messages', [])
+            all_message_ids.extend(msg['id'] for msg in messages)
 
-            if emails_to_save:
-                saved = supabase_service.save_emails_batch(emails_to_save)
-                total_saved += len(saved) if saved else 0
-
-            page_token = result.get('next_page_token')
+            page_token = results.get('nextPageToken')
             if not page_token:
                 break
 
-        if result.get('history_id'):
-            supabase_service.update_account_history_id(
-                account_id,
-                result['history_id'],
-                email_address=email_address
+        total_ids = len(all_message_ids)
+        print(f"{email_address}: found {total_ids} messages to backfill", flush=True)
+
+        # ── Step 2: Process in small chunks ──────────────────────────────
+        CHUNK_SIZE   = 25   # emails fetched in parallel per round
+        MAX_WORKERS  = 2    # threads — safe for 0.5 CPU / 512MB RAM
+        SLEEP_SECS   = 2    # pause between chunks
+
+        total_saved  = 0
+        history_id   = None
+
+        for i in range(0, total_ids, CHUNK_SIZE):
+            chunk_ids = all_message_ids[i : i + CHUNK_SIZE]
+
+            # Fetch full email details for this chunk only
+            emails = gmail_service.fetch_details_parallel(
+                access_token,
+                refresh_token,
+                chunk_ids,
+                max_workers=MAX_WORKERS,
             )
 
-        print(f"{email_address}: initial backfill complete — saved {total_saved} emails", flush=True)
-        # signalling that the initial backfill is complete (server side) so that it can be fetched to the frontend
+            # Stamp IDs
+            for email_data in emails:
+                email_data['user_id']   = user_id
+                email_data['account_id'] = account_id
+
+            # Save chunk to DB
+            if emails:
+                saved = supabase_service.save_emails_batch(emails)
+                total_saved += len(saved) if saved else 0
+
+            chunk_num = (i // CHUNK_SIZE) + 1
+            total_chunks = (total_ids + CHUNK_SIZE - 1) // CHUNK_SIZE
+            print(
+                f"{email_address}: backfill chunk {chunk_num}/{total_chunks} "
+                f"— {total_saved} saved so far",
+                flush=True,
+            )
+
+            # Explicitly free chunk data and hint GC
+            del emails
+            gc.collect()
+
+            # Breathe — don't hammer CPU/RAM/Gmail API back to back
+            time.sleep(SLEEP_SECS)
+
+        # ── Step 3: Save final history_id for future incremental syncs ───
+        profile  = service.users().getProfile(userId='me').execute()
+        history_id = profile.get('historyId')
+
+        if history_id:
+            supabase_service.update_account_history_id(
+                account_id,
+                history_id,
+                email_address=email_address,
+            )
+
+        print(
+            f"{email_address}: backfill complete — {total_saved} emails saved",
+            flush=True,
+        )
+
+        # ── Step 4: Signal frontend via Realtime ─────────────────────────
         supabase_service.client.table('email_accounts')\
-        .update({'backfill_complete': True})\
-        .eq('id', account_id)\
-        .execute()
+            .update({'backfill_complete': True})\
+            .eq('id', account_id)\
+            .execute()
+
     except Exception as e:
-        print(f"Initial backfill error for {account.get('email_address', 'unknown')}: {e}", flush=True)
+        print(f"Backfill error for {account.get('email_address', 'unknown')}: {e}", flush=True)
+
 
 # 1. GOOGLE 
 @app.route('/api/gmail/sync', methods=['POST'])
