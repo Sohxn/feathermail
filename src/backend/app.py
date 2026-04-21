@@ -12,6 +12,7 @@ from services.imap_service import ImapService
 import threading
 import gc
 import time #just in case 
+from datetime import datetime, timedelta #ok i definitely need this 
 
 #testing
 app = Flask(__name__)
@@ -204,10 +205,11 @@ def run_initial_gmail_backfill(user_id: str, account: dict):
         service = gmail_service.get_gmail_service(access_token, refresh_token)
 
         while True:
+            one_month_ago = (datetime.utcnow() - timedelta(days=30)).strftime('%Y/%m/%d')
             kwargs = {
                 'userId': 'me',
-                'q': 'in:inbox',
-                'maxResults': 500,  # max allowed by Gmail — ID-only list is tiny
+                'q': f'in:inbox after:{one_month_ago}',
+                'maxResults': 500,
             }
             if page_token:
                 kwargs['pageToken'] = page_token

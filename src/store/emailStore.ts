@@ -123,13 +123,18 @@ export const useEmailStore = create<EmailState>()(
 
     appendEmails: (newEmails) =>
     set((state) => {
-      // Avoid duplicates if the same email comes in via Realtime AND pagination
       const existingIds = new Set(state.emails.map(e => e.id));
       const fresh = newEmails.filter(e => !existingIds.has(e.id));
       state.emails.push(...fresh);
-      // Update cursor to the oldest email we've seen
-      if (fresh.length > 0) {
-        state.cursor = fresh[fresh.length - 1].received_at;
+      
+      // Always keep newest-first regardless of insertion order
+      state.emails.sort((a, b) =>
+        new Date(b.received_at).getTime() - new Date(a.received_at).getTime()
+      );
+
+      // Cursor = oldest email seen (for pagination)
+      if (state.emails.length > 0) {
+        state.cursor = state.emails[state.emails.length - 1].received_at;
       }
   }),
 
