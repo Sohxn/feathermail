@@ -540,42 +540,43 @@ def gmail_webhook():
         email_address = message['emailAddress']
         history_id = message['historyId']
         
-        # Get user from database
-        account = supabase_service.client.table('email_accounts')\
+        # Get user from database — do NOT use .single() as it throws when 0 results
+        accounts = supabase_service.client.table('email_accounts')\
             .select('*')\
             .eq('email_address', email_address)\
-            .single()\
             .execute()
         
-        if not account.data:
+        if not accounts.data or len(accounts.data) == 0:
             return 'OK', 200  # Unknown user, ignore
         
+        account = accounts.data[0]
+        
         # Fetch only NEW emails using incremental sync
-        if not account.data.get('last_history_id'):
+        if not account.get('last_history_id'):
             supabase_service.update_account_history_id(
-                account.data['id'],
+                account['id'],
                 history_id,
-                account.data['email_address']
+                account['email_address']
             )
             return 'OK', 200
 
         result = gmail_service.fetch_emails_incremental(
-            access_token=account.data['access_token'],
-            refresh_token=account.data['refresh_token'],
-            start_history_id=account.data['last_history_id']
+            access_token=account['access_token'],
+            refresh_token=account['refresh_token'],
+            start_history_id=account['last_history_id']
         )
         
         # Save new emails to database
-        if result['emails']:
+        if result and result.get('emails'):
             for email_data in result['emails']:
-                email_data['user_id'] = account.data['user_id']
-                email_data['account_id'] = account.data['id']
+                email_data['user_id'] = account['user_id']
+                email_data['account_id'] = account['id']
             
             supabase_service.save_emails_batch(result['emails'])
             
             # Update history ID
             supabase_service.update_account_history_id(
-                account.data['id'],
+                account['id'],
                 history_id,
                 email_address
             )
