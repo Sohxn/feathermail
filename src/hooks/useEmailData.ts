@@ -158,9 +158,11 @@ const loadMore = useCallback(async () => {
   const syncSilent = useCallback(async () => {
     if (isDev) return;
     try {
-        const result = await api.syncEmails();
-        const emails = await api.fetchEmails();
-        store.setEmails(emails);
+        await api.syncEmails();
+        store.resetPagination();
+        const emails = await fetchEmailsPage(null, 15);
+        store.appendEmails(emails);
+        if (emails.length < 15) store.setHasMore(false);
     } catch (error: any) {
         console.error('Background sync failed:', error);
         // silent — don't toast on background sync
@@ -172,8 +174,10 @@ const loadMore = useCallback(async () => {
     try {
         store.setSyncing(true);
         const result = await api.syncEmails();
-        const emails = await api.fetchEmails();
-        store.setEmails(emails);
+      store.resetPagination();
+      const emails = await fetchEmailsPage(null, 15);
+      store.appendEmails(emails);
+      if (emails.length < 15) store.setHasMore(false);
         if (result.synced > 0) toast.success(`Synced ${result.synced} new emails`);
         else toast.info('No new emails');
     } catch (error: any) {

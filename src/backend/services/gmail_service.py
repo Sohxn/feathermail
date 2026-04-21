@@ -79,20 +79,26 @@ class GmailService:
 
     # ── SYNC ──────────────────────────────────────────────────────────────
 
-    def fetch_emails_full(self, access_token, refresh_token, max_results=50):
+    def fetch_emails_full(self, access_token, refresh_token, max_results=50, page_token=None):
         """
         Full sync: fetch the most recent N emails.
         Used on the very first sync (no history_id yet).
-        Returns { emails, history_id }
+        Supports pagination via page_token.
+        Returns { emails, history_id, next_page_token }
         """
         try:
             service = self.get_gmail_service(access_token, refresh_token)
 
-            results = service.users().messages().list(
-                userId='me',
-                maxResults=max_results,
-                q='in:inbox'
-            ).execute()
+            kwargs = {
+                'userId': 'me',
+                'q': 'in:inbox'
+            }
+            if max_results:
+                kwargs['maxResults'] = max_results
+            if page_token:
+                kwargs['pageToken'] = page_token
+
+            results = service.users().messages().list(**kwargs).execute()
 
             messages = results.get('messages', [])
 
@@ -109,13 +115,24 @@ class GmailService:
             # Grab current historyId so next sync can be incremental
             profile = service.users().getProfile(userId='me').execute()
             history_id = profile.get('historyId')
+            next_page_token = results.get('nextPageToken')
 
             print(f"Full sync: fetched {len(emails)} emails, historyId={history_id}")
-            return {'emails': emails, 'history_id': history_id, 'is_full_sync': True}
+            return {
+                'emails': emails,
+                'history_id': history_id,
+                'next_page_token': next_page_token,
+                'is_full_sync': True
+            }
 
         except HttpError as error:
             print(f'Gmail API error during full sync: {error}', flush=True)
-            return {'emails': [], 'history_id': None, 'is_full_sync': True}
+            return {
+                'emails': [],
+                'history_id': None,
+                'next_page_token': None,
+                'is_full_sync': True
+            }
 
     def fetch_emails_incremental(self, access_token, refresh_token, start_history_id):
         """

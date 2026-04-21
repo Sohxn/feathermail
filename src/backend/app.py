@@ -9,6 +9,7 @@ from services.gmail_push import GmailPushService
 import json 
 import base64
 from services.imap_service import ImapService
+import threading
 
 #testing
 app = Flask(__name__)
@@ -34,6 +35,51 @@ supabase_service = SupabaseService(
     Config.supabase_url,
     Config.supabase_key
 )
+
+
+def run_initial_gmail_backfill(user_id: str, account: dict):
+    """Backfill historical Gmail inbox for a newly connected account in the background."""
+    try:
+        account_id = account['id']
+        email_address = account['email_address']
+        access_token = account['access_token']
+        refresh_token = account['refresh_token']
+
+        total_saved = 0
+        page_token = None
+
+        while True:
+            result = gmail_service.fetch_emails_full(
+                access_token=access_token,
+                refresh_token=refresh_token,
+                max_results=500,
+                page_token=page_token
+            )
+
+            emails_to_save = []
+            for email_data in result.get('emails', []):
+                email_data['user_id'] = user_id
+                email_data['account_id'] = account_id
+                emails_to_save.append(email_data)
+
+            if emails_to_save:
+                saved = supabase_service.save_emails_batch(emails_to_save)
+                total_saved += len(saved) if saved else 0
+
+            page_token = result.get('next_page_token')
+            if not page_token:
+                break
+
+        if result.get('history_id'):
+            supabase_service.update_account_history_id(
+                account_id,
+                result['history_id'],
+                email_address=email_address
+            )
+
+        print(f"{email_address}: initial backfill complete — saved {total_saved} emails", flush=True)
+    except Exception as e:
+        print(f"Initial backfill error for {account.get('email_address', 'unknown')}: {e}", flush=True)
 
 
 # settings configuration
@@ -117,6 +163,16 @@ def gmail_oauth_callback():
         is_first = len(existing.data) == 0
         print("first account — marking as primary" if is_first else "additional account", flush=True)
 
+        existing_account = supabase_service.client.table('email_accounts')\
+            .select('id,last_history_id')\
+            .eq('user_id', user_id)\
+            .eq('email_address', tokens['gmail_email'])\
+            .limit(1)\
+            .execute()
+
+        existing_account_row = existing_account.data[0] if existing_account.data else None
+        had_history = bool(existing_account_row and existing_account_row.get('last_history_id'))
+
         account_data = {
             'user_id': user_id,
             'email_address': tokens['gmail_email'],
@@ -126,7 +182,8 @@ def gmail_oauth_callback():
             'token_expiry': tokens['token_expiry'],
             'is_primary': is_first,
             'is_connected': True,
-            'last_history_id': str(tokens['history_id']) if tokens.get('history_id') else None,
+            # New account should start with no history marker so initial sync performs full backfill.
+            'last_history_id': str(existing_account_row['last_history_id']) if had_history else None,
         }
 
         result = supabase_service.client.table('email_accounts')\
@@ -140,6 +197,16 @@ def gmail_oauth_callback():
             access_token=tokens['access_token'],
             refresh_token=tokens['refresh_token']
         )
+
+        # For newly connected accounts (or accounts without a stored history marker),
+        # backfill historical emails asynchronously so UI stays responsive.
+        if not had_history:
+            thread_account = result.data[0]
+            threading.Thread(
+                target=run_initial_gmail_backfill,
+                args=(user_id, thread_account),
+                daemon=True,
+            ).start()
 
         return jsonify({
             'success': True,
@@ -484,6 +551,14 @@ def gmail_webhook():
             return 'OK', 200  # Unknown user, ignore
         
         # Fetch only NEW emails using incremental sync
+        if not account.data.get('last_history_id'):
+            supabase_service.update_account_history_id(
+                account.data['id'],
+                history_id,
+                account.data['email_address']
+            )
+            return 'OK', 200
+
         result = gmail_service.fetch_emails_incremental(
             access_token=account.data['access_token'],
             refresh_token=account.data['refresh_token'],
