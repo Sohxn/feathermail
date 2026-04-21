@@ -14,6 +14,29 @@ import { supabase } from '@/lib/supabase';
 
 const API_BASE_URL = import.meta.env.VITE_FLASK_API_URL || 'http://localhost:5000';
 
+// imap
+export interface ImapConnectPayload {
+  provider: 'yahoo' | 'outlook' | 'imap';
+  email: string;
+  password: string;
+  // Only needed when provider === 'imap' (custom domain):
+  imap_host?: string;
+  imap_port?: number;
+  smtp_host?: string;
+  smtp_port?: number;
+}
+ 
+export async function connectImapAccount(payload: ImapConnectPayload) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Not authenticated');
+ 
+  return apiRequest('/api/imap/connect', {
+    method: 'POST',
+    body: JSON.stringify({ ...payload, user_id: user.id }),
+  });
+}
+
+
 /**
  * Helper function to make API requests
  * Automatically adds auth headers and handles errors
@@ -229,11 +252,41 @@ export async function fetchEmailsPage(cursor: string | null, limit = 15) {
 export async function syncEmails() {
   const user = await getCurrentUser();
   if (!user) throw new Error('Not authenticated');
-  
-  return apiRequest('/api/gmail/sync', {
-    method: 'POST',
-    body: JSON.stringify({ user_id: user.id }),
-  });
+ 
+  const accounts = await fetchEmailAccounts();
+ 
+  const gmailAccounts = accounts.filter((a: any) => a.provider === 'gmail');
+  const imapAccounts  = accounts.filter((a: any) => a.provider !== 'gmail');
+ 
+  const results = await Promise.allSettled([
+    // Gmail sync (one call covers all Gmail accounts)
+    gmailAccounts.length > 0
+      ? apiRequest('/api/gmail/sync', {
+          method: 'POST',
+          body: JSON.stringify({ user_id: user.id }),
+        })
+      : Promise.resolve({ synced: 0, accounts_synced: 0 }),
+ 
+    // One IMAP sync call per account (they don't share tokens)
+    ...imapAccounts.map((a: any) =>
+      apiRequest('/api/imap/sync', {
+        method: 'POST',
+        body: JSON.stringify({ user_id: user.id, account_id: a.id }),
+      })
+    ),
+  ]);
+ 
+  // Tally up total synced across all providers
+  let totalSynced = 0;
+  for (const r of results) {
+    if (r.status === 'fulfilled') {
+      totalSynced += (r.value as any)?.synced ?? 0;
+    } else {
+      console.error('Sync error for one account:', r.reason);
+    }
+  }
+ 
+  return { synced: totalSynced, accounts_synced: accounts.length };
 }
 
 

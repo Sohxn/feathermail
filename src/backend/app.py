@@ -8,27 +8,52 @@ import logging
 from services.gmail_push import GmailPushService
 import json 
 import base64
+from services.imap_service import ImapService
 
 #testing
 app = Flask(__name__)
 allowed_origins_frontend = os.getenv('ALLOWED_ORIGINS', 'http://localhost:8080').split(',')
 CORS(app, origins=allowed_origins_frontend)
 
-#init
+# # envs
+# print("URL:", os.getenv("SUPABASE_URL"))
+# print("KEY:", os.getenv("SUPABASE_SERVICE_KEY"))
+
+#init GMAIL
 gmail_service = GmailService(
     Config.google_client_id,
     Config.google_client_secret,
     Config.redirect_uri
 )
 
-print("URL:", os.getenv("SUPABASE_URL"))
-print("KEY:", os.getenv("SUPABASE_SERVICE_KEY"))
+#init IMAP
+imap_service = ImapService()
 
+#init SUPABASE (database)
 supabase_service = SupabaseService(
     Config.supabase_url,
     Config.supabase_key
 )
 
+
+# settings configuration
+PROVIDER_SETTINGS = {
+    'yahoo': {
+        'imap_host': 'imap.mail.yahoo.com',
+        'imap_port': 993,
+        'smtp_host': 'smtp.mail.yahoo.com',
+        'smtp_port': 465,
+    },
+    'outlook': {
+        'imap_host': 'outlook.office365.com',
+        'imap_port': 993,
+        'smtp_host': 'smtp.office365.com',
+        'smtp_port': 587,
+    },
+    'imap': {
+    #    empty now
+    },
+}
 
 
 #### CHECKS #####
@@ -129,6 +154,7 @@ def gmail_oauth_callback():
 
 # ── SYNC ──────────────────────────────────────────────────────────────────
 
+# 1. GOOGLE 
 @app.route('/api/gmail/sync', methods=['POST'])
 def sync_gmail():
     """
@@ -227,6 +253,163 @@ def sync_gmail():
     except Exception as e:
         print(f'Sync error: {e}', flush=True)
         return jsonify({'error': str(e)}), 500
+
+# other providers
+@app.route('/api/imap/connect', methods=['POST'])
+def connect_imap():
+    """
+    1.Test IMAP credentials 
+    2.If they work, save the account to the DB.
+    3.Expected JSON body:
+    {
+        "user_id":   "...",
+        "provider":  "yahoo" | "outlook" | "imap",
+        "email":     "user@example.com",
+        "password":  "app-password-here",
+ 
+        // Only required when provider == "imap" (custom domain):
+        "imap_host": "imap.example.com",
+        "imap_port": 993,
+        "smtp_host": "smtp.example.com",
+        "smtp_port": 465
+    }
+    """
+    try:
+        data     = request.json
+        user_id  = data['user_id']
+        provider = data['provider']          # 'yahoo' | 'outlook' | 'imap'
+        email    = data['email']
+        password = data['password']
+ 
+        # Resolve server settings
+        if provider in PROVIDER_SETTINGS and PROVIDER_SETTINGS[provider]:
+            settings = PROVIDER_SETTINGS[provider]
+        else:
+            # Custom domain — user must supply all four values
+            settings = {
+                'imap_host': data['imap_host'],
+                'imap_port': int(data.get('imap_port', 993)),
+                'smtp_host': data['smtp_host'],
+                'smtp_port': int(data.get('smtp_port', 465)),
+            }
+ 
+        imap_host = settings['imap_host']
+        imap_port = settings['imap_port']
+        smtp_host = settings['smtp_host']
+        smtp_port = settings['smtp_port']
+ 
+        # ── 1. Test the connection before saving anything ──────────────────
+        ok, err_msg = imap_service.test_connection(imap_host, imap_port, email, password)
+        if not ok:
+            return jsonify({'success': False, 'error': err_msg}), 400
+ 
+        # ── 2. Check whether this is the user's first account ─────────────
+        existing = supabase_service.client.table('email_accounts') \
+            .select('id') \
+            .eq('user_id', user_id) \
+            .execute()
+        is_first = len(existing.data) == 0
+ 
+        # ── 3. Save to the database ────────────────────────────────────────
+        account_data = {
+            'user_id':       user_id,
+            'email_address': email,
+            'provider':      provider,
+            'password':      password,      # TODO: encrypt before storing
+            'imap_host':     imap_host,
+            'imap_port':     imap_port,
+            'smtp_host':     smtp_host,
+            'smtp_port':     smtp_port,
+            'is_primary':    is_first,
+            'is_connected':  True,
+        }
+ 
+        result = supabase_service.client.table('email_accounts') \
+            .upsert(account_data, on_conflict='user_id,email_address') \
+            .execute()
+ 
+        account_id = result.data[0]['id']
+        print(f"IMAP account saved: {email} ({provider}), id={account_id}", flush=True)
+ 
+        return jsonify({'success': True, 'account_id': account_id, 'email': email})
+ 
+    except Exception as e:
+        print(f'IMAP connect error: {e}', flush=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+ 
+ 
+@app.route('/api/imap/sync', methods=['POST'])
+def sync_imap():
+    """
+    Fetch new emails for one (or all) IMAP accounts belonging to a user.
+ 
+    Expected JSON body:
+    {
+        "user_id":    "...",
+        "account_id": "..."   // optional — omit to sync all IMAP accounts
+    }
+    """
+    try:
+        data       = request.json
+        user_id    = data['user_id']
+        account_id = data.get('account_id')
+ 
+        # Load the target account(s)
+        if account_id:
+            accounts = [supabase_service.get_email_account(account_id)]
+        else:
+            # All IMAP/yahoo/outlook accounts for this user
+            all_accounts = supabase_service.get_user_email_accounts(user_id)
+            accounts = [a for a in all_accounts if a.get('provider') != 'gmail']
+ 
+        if not accounts:
+            return jsonify({'success': True, 'synced': 0, 'accounts_synced': 0})
+ 
+        total_saved = 0
+ 
+        for account in accounts:
+            email_address = account['email_address']
+ 
+            # ── Fetch emails via IMAP ──────────────────────────────────────
+            result = imap_service.fetch_emails(
+                host     = account['imap_host'],
+                port     = account['imap_port'],
+                username = email_address,
+                password = account['password'],
+                max_results = 50,
+            )
+ 
+            # ── Stamp each email with user/account IDs ─────────────────────
+            emails_to_save = []
+            for email_data in result['emails']:
+                email_data['user_id']    = user_id
+                email_data['account_id'] = account['id']
+                emails_to_save.append(email_data)
+ 
+            # ── Batch upsert ───────────────────────────────────────────────
+            if emails_to_save:
+                saved = supabase_service.save_emails_batch(emails_to_save)
+                total_saved += len(saved) if saved else 0
+ 
+            # Update last_sync timestamp
+            supabase_service.client.table('email_accounts') \
+                .update({'last_sync': supabase_service._now_iso()}) \
+                .eq('id', account['id']) \
+                .execute()
+ 
+            print(f"IMAP sync: {email_address} — {len(emails_to_save)} emails", flush=True)
+ 
+        return jsonify({
+            'success': True,
+            'synced': total_saved,
+            'accounts_synced': len(accounts),
+        })
+ 
+    except Exception as e:
+        print(f'IMAP sync error: {e}', flush=True)
+        return jsonify({'error': str(e)}), 500
+
+
 
 
 # ── GET EMAILS ────────────────────────────────────────────────────────────
