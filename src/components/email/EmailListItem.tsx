@@ -36,7 +36,7 @@ export default function EmailListItem({ email, isSelected, onClick }: EmailListI
             <span className="text-yellow-500 flex-shrink-0 text-xs">★</span>
           )}
         </div>
-        <span className="glass p-1.5 rounded-xl text-xs text-foreground whitespace-nowrap ml-2 mb-2 flex-shrink-0">
+        <span className="border-2 p-1.5 rounded-xl text-xs text-foreground whitespace-nowrap ml-2 mb-2 flex-shrink-0">
           {formatDistanceToNow(new Date(email.received_at), { addSuffix: true })}
         </span>
       </div>
@@ -59,11 +59,11 @@ export default function EmailListItem({ email, isSelected, onClick }: EmailListI
       )}
 
       <div className="mt-3 h-fit w-fit">
-        <span className="glass rounded-lg text-xs p-1.5 mr-2">
+        <span className="border-2 rounded-xl text-xs p-1.5 mr-2">
           $4000
         </span>
 
-        <span className="glass rounded-lg text-xs p-1.5">
+        <span className="border-2 rounded-xl text-xs p-1.5">
           02-05-2026
         </span>
       </div>

@@ -347,7 +347,7 @@ export default function EmailView({ email, onReply }: EmailViewProps) {
       </div>
 
       {/* ── Email body ── */}
-      <div className="rounded-2xl shadow-xl p-4 md:p-6 overflow-x-hidden glass">
+      <div className="glass-black rounded-2xl shadow-xl p-4 md:p-6 overflow-x-hidden">
         {email.body_html ? (
           <IframeEmailBody html={email.body_html} />
         ) : (

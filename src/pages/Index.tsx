@@ -212,7 +212,7 @@ export default function Index() {
         </div>
 
         {/* Email items — relative so FAB can be positioned inside */}
-        <div className="flex-1 overflow-y-scroll scrollbar-hide">
+        <div className="flex-1 overflow-y-scroll scrollbar-hide m-2">
           {emails.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
               <p className="mb-4">No emails</p>
