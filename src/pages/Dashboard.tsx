@@ -348,7 +348,7 @@ export default function Dashboard() {
                   <input type="email" value={imapForm.email}
                     onChange={e => setImapForm(f => ({ ...f, email: e.target.value }))}
                     placeholder="you@yahoo.com"
-                    className="w-full bg-white/08 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-white/30 placeholder:text-white/25" />
+                    className="w-full bg-white/08 text-black text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-white/30 placeholder:text-white/25" />
                 </div>
 
                 {/* Password */}
@@ -360,7 +360,7 @@ export default function Dashboard() {
                     <input type={showPassword ? 'text' : 'password'} value={imapForm.password}
                       onChange={e => setImapForm(f => ({ ...f, password: e.target.value }))}
                       placeholder="••••••••••••"
-                      className="w-full bg-white/08 text-white text-sm rounded-xl px-4 py-2.5 pr-10 focus:outline-none focus:ring-1 focus:ring-white/30 placeholder:text-white/25" />
+                      className="w-full bg-white/08 text-black text-sm rounded-xl px-4 py-2.5 pr-10 focus:outline-none focus:ring-1 focus:ring-white/30 placeholder:text-white/25" />
                     <button type="button" onClick={() => setShowPassword(s => !s)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/80">
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -378,13 +378,13 @@ export default function Dashboard() {
                         <input type="text" value={imapForm.imap_host}
                           onChange={e => setImapForm(f => ({ ...f, imap_host: e.target.value }))}
                           placeholder="imap.example.com"
-                          className="w-full bg-white/08 text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-white/30 placeholder:text-white/25" />
+                          className="w-full bg-white/08 text-black text-xs rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-white/30 placeholder:text-white/25" />
                       </div>
                       <div>
                         <label className="block text-xs text-white/40 mb-1">Port</label>
                         <input type="number" value={imapForm.imap_port}
                           onChange={e => setImapForm(f => ({ ...f, imap_port: +e.target.value }))}
-                          className="w-full bg-white/08 text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-white/30" />
+                          className="w-full bg-white/08 text-black text-xs rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-white/30" />
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
@@ -393,13 +393,13 @@ export default function Dashboard() {
                         <input type="text" value={imapForm.smtp_host}
                           onChange={e => setImapForm(f => ({ ...f, smtp_host: e.target.value }))}
                           placeholder="smtp.example.com"
-                          className="w-full bg-white/08 text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-white/30 placeholder:text-white/25" />
+                          className="w-full bg-white/08 text-black text-xs rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-white/30 placeholder:text-white/25" />
                       </div>
                       <div>
                         <label className="block text-xs text-white/40 mb-1">Port</label>
                         <input type="number" value={imapForm.smtp_port}
                           onChange={e => setImapForm(f => ({ ...f, smtp_port: +e.target.value }))}
-                          className="w-full bg-white/08 text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-white/30" />
+                          className="w-full bg-white/08 text-black text-xs rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-white/30" />
                       </div>
                     </div>
                   </div>
