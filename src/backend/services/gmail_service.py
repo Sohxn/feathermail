@@ -110,7 +110,7 @@ class GmailService:
 
             # optimised block
             message_ids = [msg['id'] for msg in messages]
-            emails = self.fetch_details_parallel(service, message_ids) #using the optmisation function 
+            emails = self.fetch_details_parallel(access_token, refresh_token, message_ids)
 
             # Grab current historyId so next sync can be incremental
             profile = service.users().getProfile(userId='me').execute()
@@ -180,7 +180,7 @@ class GmailService:
             #         emails.append(email_data)
 
             # optimised block
-            emails = self.fetch_details_parallel(service, list(new_message_ids))
+            emails = self.fetch_details_parallel(access_token, refresh_token, list(new_message_ids))
 
             print(f"Incremental sync: {len(emails)} new emails since historyId={start_history_id}, new historyId={new_history_id}", flush=True)
             return {'emails': emails, 'history_id': new_history_id, 'is_full_sync': False}
@@ -196,7 +196,7 @@ class GmailService:
     # ── EMAIL PARSING ─────────────────────────────────────────────────────
 
     def _get_email_details(self, service, msg_id):
-        """Fetch and parse a single email"""
+        """Fetch and parse a single email — service must be per-thread"""
         try:
             message = service.users().messages().get(
                 userId='me',
@@ -292,6 +292,31 @@ class GmailService:
         except Exception:
             return None
 
+
+    def _fetch_one(self, access_token, refresh_token, msg_id):
+        """Build a fresh service per-thread and fetch one email."""
+        service = self.get_gmail_service(access_token, refresh_token)
+        return self._get_email_details(service, msg_id)
+    
+
+    # optimisation and multithreading
+    def fetch_details_parallel(self, access_token, refresh_token, message_ids, max_workers=8):
+        """Each worker builds its own service — avoids SSL/httplib2 thread collisions."""
+        emails = []
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(self._fetch_one, access_token, refresh_token, mid): mid
+                for mid in message_ids
+            }
+            for future in as_completed(futures):
+                result = future.result()
+                if result:
+                    emails.append(result)
+        return emails
+
+
+
+    
     # ── SEND ──────────────────────────────────────────────────────────────
 
     def send_email(self, access_token, refresh_token, to, subject, body):
@@ -310,13 +335,4 @@ class GmailService:
             return {'success': False, 'error': str(error)}
 
 
-    # optimisation and multithreading
-    def fetch_details_parallel(self, service, message_ids, max_workers=10):
-        emails = []
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = {executor.submit(self._get_email_details, service, mid): mid for mid in message_ids}
-            for future in as_completed(futures):
-                result = future.result()
-                if result:
-                    emails.append(result)
-        return emails
+    
