@@ -147,11 +147,14 @@ export default function Index() {
     syncSilent(); 
   }, [isAuthenticated, authLoading, navigate]);
 
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    const id = setInterval(() => syncSilent(), 30000);
-    return () => clearInterval(id);
-  }, [isAuthenticated, syncSilent]);
+
+  //UNCOMMENT IF NEEDED
+
+  // useEffect(() => {
+  //   if (!isAuthenticated) return;
+  //   const id = setInterval(() => syncSilent(), 30000);
+  //   return () => clearInterval(id);
+  // }, [isAuthenticated, syncSilent]);
 
   useEffect(() => {
     if (!isAuthenticated || isDev) return;
