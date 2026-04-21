@@ -100,6 +100,31 @@ export default function Index() {
 
 
 
+  // backfill updation 
+  useEffect(() => {
+    if (!isAuthenticated || isDev) return;
+
+    const channel = supabase
+      .channel('backfill-signal')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'email_accounts' },
+        (payload) => {
+          if (payload.new?.backfill_complete === true) {
+            console.log('Backfill complete, reloading emails...');
+            // Reset pagination and reload fresh
+            useEmailStore.getState().resetPagination();
+            loadData();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [isAuthenticated, loadData]);
+
+
+
   useEffect(() => {
     if (emails.length === 0) {
       if (selectedEmailId !== null) setSelectedEmailId(null);
