@@ -26,7 +26,7 @@ export default function Signup() {
   };
   
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-transparent flex flex-col">
       {/* Top Navigation Bar */}
       <header className="w-full border-b border-border">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -69,7 +69,7 @@ export default function Signup() {
           </div>
           
           {/* card */}
-          <div className="bg-card border border-border rounded-2xl rounded-2xl shadow-[28px_28px_50px_rgba(0,0,0,0.15),_-23px_-23px_45px_rgba(255,255,255,0.8)] p-6">
+          <div className="glass rounded-2xl p-6">
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded text-sm">
@@ -83,7 +83,7 @@ export default function Signup() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-foreground bg-background"
+                  className="w-full px-3 py-2 border border-foreground rounded-lg bg-transparent"
                   required
                 />
               </div>
@@ -94,7 +94,7 @@ export default function Signup() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-foreground bg-background"
+                  className="w-full px-3 py-2 border border-foreground rounded-lg bg-transparent"
                   minLength={6}
                   required
                 />
@@ -106,7 +106,7 @@ export default function Signup() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2 bg-foreground text-background rounded-md hover:opacity-90 disabled:opacity-50"
+                className="glass w-full py-2 text-background rounded-lg hover:opacity-90 disabled:opacity-50"
               >
                 {loading ? "Creating account..." : "Sign up"}
               </button>
