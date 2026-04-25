@@ -2,7 +2,7 @@ import { format } from "date-fns";
 import { useEmailStore } from "@/store/emailStore";
 import * as api from "@/services/apiClient";
 import { Star, Archive, Trash2, Reply, Sparkles } from "lucide-react";
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import DOMPurify from "dompurify";
 import { toast } from "sonner";
 import { ComposeInitData } from "./ComposeModal";
@@ -70,7 +70,7 @@ function getSanitizedHTML(html: string): string {
  * own CSS can't bleed into our app UI — the same technique used by
  * Gmail, Outlook Web, Fastmail, and Hey.
  */
-function IframeEmailBody({ html }: { html: string }) {
+function IframeEmailBody({ html, onDarkDetected }: { html: string; onDarkDetected?: (isDark: boolean) => void }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const writeContent = useCallback(() => {
@@ -155,6 +155,42 @@ function IframeEmailBody({ html }: { html: string }) {
     doc.write(wrappedHtml);
     doc.close();
 
+    // Sample visible text colors from the rendered email so the parent can
+    // choose a contrasting container background.
+    requestAnimationFrame(() => {
+      try {
+        const textNodes = doc.body.querySelectorAll(
+          "p, div, span, td, li, h1, h2, h3, h4, h5, h6",
+        );
+        let darkCount = 0;
+        let lightCount = 0;
+
+        const toCheck = Array.from(textNodes).slice(0, 20);
+        const view = doc.defaultView;
+
+        for (const el of toCheck) {
+          if (!view) break;
+          const color = view.getComputedStyle(el).color;
+          const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+          if (!match) continue;
+          const r = parseInt(match[1], 10);
+          const g = parseInt(match[2], 10);
+          const b = parseInt(match[3], 10);
+          const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+          if (brightness > 128) {
+            lightCount += 1;
+          } else {
+            darkCount += 1;
+          }
+        }
+
+        // Mostly light text means the email expects a dark canvas.
+        onDarkDetected?.(lightCount > darkCount);
+      } catch {
+        // Keep default panel style if detection fails.
+      }
+    });
+
     // Auto-resize the iframe to fit its content so we don't show a
     // double scrollbar — the outer container scrolls instead.
     const resize = () => {
@@ -178,7 +214,7 @@ function IframeEmailBody({ html }: { html: string }) {
     doc.addEventListener("load", resize, true); // captures image load events
     setTimeout(resize, 500);  // safety net for slow images
     setTimeout(resize, 1500);
-  }, [html]);
+  }, [html, onDarkDetected]);
 
   useEffect(() => {
     writeContent();
@@ -228,6 +264,7 @@ export default function EmailView({ email, onReply }: EmailViewProps) {
   const markAsRead   = useEmailStore((state) => state.markEmailAsRead);
   const toggleStar   = useEmailStore((state) => state.toggleEmailStar);
   const archiveEmail = useEmailStore((state) => state.archiveEmail);
+  const [emailWantsDarkBg, setEmailWantsDarkBg] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!email.is_read) {
@@ -237,6 +274,10 @@ export default function EmailView({ email, onReply }: EmailViewProps) {
       );
     }
   }, [email.id, email.is_read, markAsRead]);
+
+  useEffect(() => {
+    setEmailWantsDarkBg(null);
+  }, [email.id]);
 
   const handleToggleStar = async () => {
     try {
@@ -347,9 +388,20 @@ export default function EmailView({ email, onReply }: EmailViewProps) {
       </div>
 
       {/* ── Email body ── */}
-      <div className="glass-black rounded-2xl shadow-xl p-4 md:p-6 overflow-x-hidden">
+      <div
+        className="glass-black rounded-2xl shadow-xl p-4 md:p-6 overflow-x-hidden transition-colors duration-300"
+        style={{
+          background:
+            emailWantsDarkBg === true
+              ? "rgba(10,10,10,0.92)"
+              : emailWantsDarkBg === false
+              ? "rgba(255,255,255,0.95)"
+              : undefined,
+          backdropFilter: emailWantsDarkBg === null ? undefined : "blur(18px)",
+        }}
+      >
         {email.body_html ? (
-          <IframeEmailBody html={email.body_html} />
+          <IframeEmailBody html={email.body_html} onDarkDetected={setEmailWantsDarkBg} />
         ) : (
           <PlainTextBody text={email.body_text} />
         )}
