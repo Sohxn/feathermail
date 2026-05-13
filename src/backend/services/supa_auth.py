@@ -132,6 +132,42 @@ class SupabaseService:
             .execute()
         return result.data
 
+
+
+
+    # SUMMARY RELATED QUERIES
+    def search_durable_cache(self, sender_email_id:str, model_name:str, content_hash:str):
+        result = self.client.table('summaries')\
+            .select('*')\
+            .eq('email_id', sender_email_id)\
+            .eq('model_name', model_name)\
+            .eq('content_hash', content_hash)\
+            .gt('expires_at', 'now()')\
+            .execute()
+
+        return result.data()
+
+    # lock table
+    def insert_into_in_flight_jobs(self, job_key:str, ttl_minutes: int=5):
+            expiry_time = (datetime.now(timezone.utc) + timedelta(minutes=ttl_minutes)).isoformat()
+            
+            #row to be inserted
+            row = {
+                "job_key": job_key,
+                "status": "running",
+                "expires_at": expiry_time
+            }
+
+            try:
+                self.client.table('in_flight_jobs').insert(row).execute()
+                return True
+
+            except Exception as e:
+                msg = str(e).lower()
+                if "duplicate key" in msg or "conflict" in msg:
+                    return False
+                raise            
+
     # ── LEGACY ────────────────────────────────────────────────────────────
 
     def get_gmail_tokens(self, user_id):
