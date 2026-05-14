@@ -16,7 +16,7 @@ export default function Landing() {
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
         <div>
           <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground"></p>
-          <h1 className="text-xl font-bold" style={{ fontFamily: "'Magnolia Script', cursive" }}>FeatherMail</h1>
+          <h1 className="text-xl font-bold" style={{ fontFamily: "'Magnolia Script', cursive" }}>Feathermail</h1>
         </div>
         <div className="flex gap-3">
           <button
@@ -43,7 +43,7 @@ export default function Landing() {
           </h2>
 
           <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
-            FeatherMail is an email client focused on reading, sorting, and replying without extra noise.
+            Feathermail is an email client focused on reading, sorting, and replying without extra noise.
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -83,14 +83,14 @@ export default function Landing() {
           <div className="mt-10 rounded-lg border border-border bg-secondary/20 px-6 py-6">
             <h3 className="text-sm font-semibold text-foreground">Coming to mobile</h3>
             <p className="mt-3 text-sm text-muted-foreground">
-              Native iOS and Android apps are in development. Access your FeatherMail account seamlessly across all your devices.
+              Native iOS and Android apps are in development. Access your Feathermail account seamlessly across all your devices.
             </p>
           </div>
         </section>
       </main>
 
       <footer className="mx-auto max-w-5xl px-6 pb-10 text-sm text-muted-foreground">
-        © 2026 FeatherMail
+        © 2026 Feathermail
       </footer>
     </div>
   );

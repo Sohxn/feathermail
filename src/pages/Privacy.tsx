@@ -27,10 +27,10 @@ export default function Privacy() {
           <section>
             <h2 className="text-2xl font-semibold mb-4">Introduction</h2>
             <p className="text-base leading-relaxed mb-4">
-              Welcome to Feather Mail ("we," "our," or "us"). We are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our email client application.
+              Welcome to Feathermail ("we," "our," or "us"). We are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our email client application.
             </p>
             <p className="text-base leading-relaxed">
-              By using Feather Mail, you agree to the collection and use of information in accordance with this policy. If you do not agree with our policies and practices, please do not use our service.
+              By using Feathermail, you agree to the collection and use of information in accordance with this policy. If you do not agree with our policies and practices, please do not use our service.
             </p>
           </section>
 
@@ -40,7 +40,7 @@ export default function Privacy() {
               We collect information that you provide directly to us when you:
             </p>
             <ul className="list-disc pl-6 space-y-2 text-base leading-relaxed mb-4">
-              <li>Create an account with Feather Mail</li>
+              <li>Create an account with Feathermail</li>
               <li>Connect your email accounts (Gmail, Outlook, etc.)</li>
               <li>Use our email management features</li>
               <li>Contact our support team</li>
@@ -53,10 +53,10 @@ export default function Privacy() {
           <section>
             <h2 className="text-2xl font-semibold mb-4">Google API Services User Data Policy</h2>
             <p className="text-base leading-relaxed mb-4">
-              Feather Mail's use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">Google API Services User Data Policy</a>, including the Limited Use requirements.
+              Feathermail's use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">Google API Services User Data Policy</a>, including the Limited Use requirements.
             </p>
             <p className="text-base leading-relaxed mb-4">
-              Specifically, Feather Mail requests access to your Gmail account to:
+              Specifically, Feathermail requests access to your Gmail account to:
             </p>
             <ul className="list-disc pl-6 space-y-2 text-base leading-relaxed mb-4">
               <li>Read your email messages and metadata (subject, sender, date, etc.)</li>
@@ -139,11 +139,11 @@ export default function Privacy() {
               <li><strong>Access and portability:</strong> You can access and download your email data at any time through our application</li>
               <li><strong>Correction:</strong> You can update or correct your account information through your account settings</li>
               <li><strong>Deletion:</strong> You can delete your account and all associated data at any time</li>
-              <li><strong>Revoke access:</strong> You can revoke Feather Mail's access to your Gmail account at any time through your <a href="https://myaccount.google.com/permissions" className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">Google Account settings</a></li>
-              <li><strong>Opt-out:</strong> You can disconnect individual email accounts without deleting your entire Feather Mail account</li>
+              <li><strong>Revoke access:</strong> You can revoke Feathermail's access to your Gmail account at any time through your <a href="https://myaccount.google.com/permissions" className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">Google Account settings</a></li>
+              <li><strong>Opt-out:</strong> You can disconnect individual email accounts without deleting your entire Feathermail account</li>
             </ul>
             <p className="text-base leading-relaxed">
-              To exercise any of these rights, please contact us at privacy@Feathermail.com or use the settings within the application.
+              To exercise any of these rights, please contact us at privacy@feathermail.com or use the settings within the application.
             </p>
           </section>
 
@@ -164,14 +164,14 @@ export default function Privacy() {
           <section>
             <h2 className="text-2xl font-semibold mb-4">Children's Privacy</h2>
             <p className="text-base leading-relaxed">
-              Feather Mail is not intended for use by children under the age of 13. We do not knowingly collect personal information from children under 13. If you are a parent or guardian and believe your child has provided us with personal information, please contact us immediately so we can delete such information.
+              Feathermail is not intended for use by children under the age of 13. We do not knowingly collect personal information from children under 13. If you are a parent or guardian and believe your child has provided us with personal information, please contact us immediately so we can delete such information.
             </p>
           </section>
 
           <section>
             <h2 className="text-2xl font-semibold mb-4">International Data Transfers</h2>
             <p className="text-base leading-relaxed">
-              Your information may be transferred to and processed in countries other than your country of residence. These countries may have data protection laws that are different from the laws of your country. By using Feather Mail, you consent to the transfer of your information to these countries.
+              Your information may be transferred to and processed in countries other than your country of residence. These countries may have data protection laws that are different from the laws of your country. By using Feathermail, you consent to the transfer of your information to these countries.
             </p>
           </section>
 
@@ -186,7 +186,7 @@ export default function Privacy() {
               <li>Sending you an email notification (for significant changes)</li>
             </ul>
             <p className="text-base leading-relaxed">
-              Your continued use of Feather Mail after any changes to this Privacy Policy constitutes your acceptance of the updated policy.
+              Your continued use of Feathermail after any changes to this Privacy Policy constitutes your acceptance of the updated policy.
             </p>
           </section>
 
