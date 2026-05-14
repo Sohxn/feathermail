@@ -446,9 +446,10 @@
 
 @font-face {
   font-family: 'Magnolia Script';
-  src: url('/src/assets/fonts/MagnoliaScript.ttf') format('truetype');
+  src: url('/assets/Magnolia Script.otf') format('opentype');
   font-weight: normal;
   font-style: normal;
+  font-display: swap;
 }
 
 /*
