@@ -662,6 +662,37 @@ def gmail_webhook():
         return 'ERROR', 500
 
 
+# summarisation endpoint
+@app.route('/api/summarize', methods=['POST'])
+def summarize():
+    from services.summary_service import (
+        generate_content_hash,
+        generate_job_key,
+        cache_check,
+        fetch_or_generate_summary,
+    )
+
+    data = request.get_json(silent=True) or {}
+    email_body = data.get('email_body')
+    sender_id = data.get('sender_id')
+    model_name = data.get('model_name', 'bitnet')
+    prompt_version = data.get('prompt_version', 'v1')
+
+    if not email_body or not sender_id:
+        return jsonify({'error': 'email_body and sender_id are required'}), 400
+
+    cached_summary = cache_check(sender_id, model_name, email_body, prompt_version)
+    if cached_summary:
+        return jsonify({'status': 'cached', 'summary': cached_summary}), 200
+
+    content_hash = generate_content_hash(email_body)
+    job_key = generate_job_key(sender_id, model_name, prompt_version, content_hash)
+
+    result = fetch_or_generate_summary(job_key, email_body, sender_id, model_name, content_hash, prompt_version)
+    return jsonify(result), 202
+
+
+
 if __name__ == '__main__':
     import os
     port = int(os.getenv('PORT', 5000))

@@ -1,4 +1,12 @@
 import hashlib
+import logging
+import os
+import threading
+from datetime import datetime, timezone
+
+import httpx
+
+from config import Config
 from services.supa_auth import SupabaseService
 
 
@@ -38,6 +46,57 @@ def cache_check(sender_email_id, model_name, mail_body, prompt_version):
 
     
 #fetch or generate summary
-def fetch_or_generate_summary():
-    #check if the same summary is in flight
-    
+def fetch_or_generate_summary(job_key: str, email_body: str, sender_email_id: str, model_name: str, content_hash: str, prompt_version: str):
+    if not supabase_service.try_claim_work(job_key):
+        return {"status": "processing", "job_key": job_key}
+
+    thread = threading.Thread(
+        target=run_summary_worker,
+        args=(job_key, email_body, sender_email_id, model_name, content_hash, prompt_version),
+        daemon=True,
+    )
+    thread.start()
+    return {"status": "accepted", "job_key": job_key}
+
+
+def run_summary_worker(job_key: str, email_body: str, sender_email_id: str, model_name: str, content_hash: str, prompt_version: str):
+    logger = logging.getLogger(__name__)
+    try:
+        result = call_bitnet_server(email_body)
+        summary_text = result.get("summary") or result.get("response") or result.get("text") or ""
+        supabase_service.insert_summary(
+            job_key,
+            sender_email_id,
+            model_name,
+            content_hash,
+            prompt_version,
+            summary_text,
+        )
+    except Exception as e:
+        logger.exception("summary worker failed for job_key=%s: %s", job_key, e)
+    finally:
+        supabase_service.delete_in_flight_job(job_key)
+
+
+def call_bitnet_server(email_body: str):
+    base_url = os.getenv("BITNET_SERVER_URL", "http://localhost:8000")
+    path = os.getenv("BITNET_SERVER_PATH", "/generate")
+    timeout = int(os.getenv("SUMMARY_MODEL_TIMEOUT_SECONDS", "45"))
+
+    response = httpx.post(
+        f"{base_url}{path}",
+        json={"prompt": email_body},
+        timeout=timeout,
+    )
+    response.raise_for_status()
+
+    try:
+        return response.json()
+    except ValueError:
+        return {"text": response.text}
+
+
+
+
+
+

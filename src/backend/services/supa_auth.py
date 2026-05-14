@@ -1,5 +1,5 @@
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from supabase import create_client, Client
 
 
@@ -142,31 +142,64 @@ class SupabaseService:
             .eq('email_id', sender_email_id)\
             .eq('model_name', model_name)\
             .eq('content_hash', content_hash)\
-            .gt('expires_at', 'now()')\
+            .gt('expires_at', self._now_iso())\
             .execute()
 
-        return result.data()
+        return result.data
 
-    # lock table
-    def insert_into_in_flight_jobs(self, job_key:str, ttl_minutes: int=5):
-            expiry_time = (datetime.now(timezone.utc) + timedelta(minutes=ttl_minutes)).isoformat()
-            
-            #row to be inserted
-            row = {
-                "job_key": job_key,
-                "status": "running",
-                "expires_at": expiry_time
-            }
+    def try_claim_work(self, job_key: str, ttl_minutes: int = 5):
+        expiry_time = (datetime.now(timezone.utc) + timedelta(minutes=ttl_minutes)).isoformat()
+        row = {
+            "job_key": job_key,
+            "status": "running",
+            "expires_at": expiry_time,
+        }
 
-            try:
-                self.client.table('in_flight_jobs').insert(row).execute()
-                return True
+        try:
+            self.client.table('in_flight_jobs').insert(row).execute()
+            return True
+        except Exception as e:
+            msg = str(e).lower()
+            if "duplicate key" in msg or "23505" in msg or "conflict" in msg:
+                return False
+            raise
 
-            except Exception as e:
-                msg = str(e).lower()
-                if "duplicate key" in msg or "conflict" in msg:
-                    return False
-                raise            
+    def insert_summary(self, job_key: str, sender_email_id: str, model_name: str, content_hash: str, prompt_version: str, summary_text: str, ttl_days: int = 30):
+        expires_at = (datetime.now(timezone.utc) + timedelta(days=ttl_days)).isoformat()
+        row = {
+            "job_key": job_key,
+            "email_id": sender_email_id,
+            "model_name": model_name,
+            "content_hash": content_hash,
+            "prompt_version": prompt_version,
+            "summary_text": summary_text,
+            "expires_at": expires_at,
+            "created_at": self._now_iso(),
+        }
+        result = self.client.table('summaries').upsert(row, on_conflict='job_key').execute()
+        return result.data
+
+    def get_cached_summary(self, job_key: str):
+        result = self.client.table('summaries')\
+            .select('*')\
+            .eq('job_key', job_key)\
+            .limit(1)\
+            .execute()
+        return result.data[0] if result.data else None
+
+    def get_in_flight_job(self, job_key: str):
+        result = self.client.table('in_flight_jobs')\
+            .select('*')\
+            .eq('job_key', job_key)\
+            .limit(1)\
+            .execute()
+        return result.data[0] if result.data else None
+
+    def delete_in_flight_job(self, job_key: str):
+        self.client.table('in_flight_jobs')\
+            .delete()\
+            .eq('job_key', job_key)\
+            .execute()
 
     # ── LEGACY ────────────────────────────────────────────────────────────
 
