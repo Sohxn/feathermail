@@ -39,6 +39,7 @@ const App = () => (
         <Route path="/auth/callback" element={<AuthCallback />} />
         
         {/* Protected routes */}
+        <Route path="/inbox" element={<Index />} />
         <Route path="/dashboard" element={<Dashboard />} />
       </Routes>
     </BrowserRouter>

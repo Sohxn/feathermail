@@ -108,7 +108,7 @@ export default function Dashboard() {
 
   const handleGoToInbox = () => {
     if (accounts.length === 0) { toast.error('Add an account first'); return; }
-    navigate("/");
+    navigate("/inbox");
   };
 
   const handleRemoveAccount = async (accountId: string) => {

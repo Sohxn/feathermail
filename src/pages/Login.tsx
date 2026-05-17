@@ -17,7 +17,7 @@ export default function Login() {
   // skips auth for UI changes
   useEffect(() => {
     if(isDev){
-      navigate("/");
+      navigate("/inbox");
     }
   },[]);
   
