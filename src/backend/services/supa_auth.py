@@ -164,9 +164,10 @@ class SupabaseService:
                 return False
             raise
 
-    def insert_summary(self, job_key: str, sender_email_id: str, model_name: str, content_hash: str, prompt_version: str, summary_text: str, ttl_days: int = 30):
+    def insert_summary(self, job_key: str, sender_email_id: str, model_name: str, content_hash: str, prompt_version: str, summary_text: str, user_id: str | None = None, ttl_days: int = 30):
         expires_at = (datetime.now(timezone.utc) + timedelta(days=ttl_days)).isoformat()
         row = {
+            "user_id": user_id,
             "email_id": sender_email_id,
             "model_name": model_name,
             "content_hash": content_hash,

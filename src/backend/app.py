@@ -654,13 +654,23 @@ def gmail_webhook():
                 email_data['user_id'] = account['user_id']
                 email_data['account_id'] = account['id']
             
-            supabase_service.save_emails_batch(result['emails'])
+            saved_emails = supabase_service.save_emails_batch(result['emails'])
+            saved_email_by_gmail_id = {
+                row.get('gmail_id'): row
+                for row in saved_emails
+                if row.get('gmail_id')
+            }
 
             # Summarisation for each newly received email body
             for email_data in result['emails']:
                 raw_email_body = email_data.get('body_text') or ''
                 if not raw_email_body:
                     print(f"Skipping summary for {email_data.get('id', 'unknown')} — no body_text", flush=True)
+                    continue
+
+                saved_email = saved_email_by_gmail_id.get(email_data.get('gmail_id'))
+                if not saved_email:
+                    print(f"Skipping summary for {email_data.get('gmail_id', 'unknown')} — saved row not found", flush=True)
                     continue
 
                 email_body = trim_email_body(raw_email_body)
@@ -678,10 +688,11 @@ def gmail_webhook():
                 fetch_or_generate_summary(
                     job_key,
                     email_body,
-                    sender_email,
+                    saved_email['id'],
                     model_name,
                     content_hash,
                     prompt_version,
+                    user_id=account['user_id'],
                 )
             
             # Update history ID

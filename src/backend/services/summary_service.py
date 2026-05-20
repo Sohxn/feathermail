@@ -58,20 +58,20 @@ def cache_check(sender_email_id, model_name, mail_body, prompt_version):
 
     
 #fetch or generate summary
-def fetch_or_generate_summary(job_key: str, email_body: str, sender_email_id: str, model_name: str, content_hash: str, prompt_version: str):
+def fetch_or_generate_summary(job_key: str, email_body: str, sender_email_id: str, model_name: str, content_hash: str, prompt_version: str, user_id: str | None = None):
     if not supabase_service.try_claim_work(job_key):
         return {"status": "processing", "job_key": job_key}
 
     thread = threading.Thread(
         target=run_summary_worker,
-        args=(job_key, email_body, sender_email_id, model_name, content_hash, prompt_version),
+        args=(job_key, email_body, sender_email_id, model_name, content_hash, prompt_version, user_id),
         daemon=True,
     )
     thread.start()
     return {"status": "accepted", "job_key": job_key}
 
 
-def run_summary_worker(job_key: str, email_body: str, sender_email_id: str, model_name: str, content_hash: str, prompt_version: str):
+def run_summary_worker(job_key: str, email_body: str, sender_email_id: str, model_name: str, content_hash: str, prompt_version: str, user_id: str | None = None):
     logger = logging.getLogger(__name__)
     try:
         #for downstream processing
@@ -91,6 +91,7 @@ def run_summary_worker(job_key: str, email_body: str, sender_email_id: str, mode
             content_hash,
             prompt_version,
             summary_text,
+            user_id=user_id,
         )
     except Exception as e:
         logger.exception("summary worker failed for job_key=%s: %s", job_key, e)
@@ -105,15 +106,15 @@ def call_bitnet_server(email_body: str):
     timeout = int(os.getenv("SUMMARY_MODEL_TIMEOUT_SECONDS", "45"))
 
     system_prompt = (
-        'You are a summarisation and extraction engine. Return exactly one minified valid JSON object '
+        'You are an email summarisation and extraction engine. Return exactly one minified valid JSON object '
         'with exactly 4 keys in this order: "summary","money","time","actions". Do not output any text '
         'before or after the JSON. Do not output markdown, code fences, labels, explanations, or newline characters. '
-        'Replace any line breaks with spaces. JSON KEY RULES- "summary" must be a short plain-text summary string. '
+        'Replace any line breaks with spaces. JSON KEY RULES- "summary" must be a short plain-text summary string that explains the email. '
         '"money" must be one extracted monetary/deal value like "$240" or "". "time" must be one extracted '
         'schedule/deadline value like "3PM, THURSDAY" or "". "actions" must be an array of semantically dry, '
         'response-oriented suggestions describing what the recipient should do next, each action short, neutral, '
         'imperative, no narrative, no emotion, no duplication, no copied full email sentences, and [] if no clear '
-        'next step exists. Do not invent facts. If uncertain, use empty values.'
+        'next step exists. DONOT INVENT FACTS. If uncertain, use empty values.'
     )
 
     payload = {
