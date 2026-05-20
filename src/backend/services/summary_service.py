@@ -5,6 +5,7 @@ import threading
 from datetime import datetime, timezone
 
 import httpx
+import json
 
 from config import Config
 from services.supa_auth import SupabaseService
@@ -62,8 +63,16 @@ def fetch_or_generate_summary(job_key: str, email_body: str, sender_email_id: st
 def run_summary_worker(job_key: str, email_body: str, sender_email_id: str, model_name: str, content_hash: str, prompt_version: str):
     logger = logging.getLogger(__name__)
     try:
+        #for downstream processing
         result = call_bitnet_server(email_body)
-        summary_text = result.get("summary") or result.get("response") or result.get("text") or ""
+        if isinstance(result, str):
+            summary_text = result
+        else:
+            #If model client returned structured data, store its raw JSON string
+            try:
+                summary_text = json.dumps(result, ensure_ascii=False)
+            except Exception:
+                summary_text = str(result)
         supabase_service.insert_summary(
             job_key,
             sender_email_id,
@@ -79,21 +88,42 @@ def run_summary_worker(job_key: str, email_body: str, sender_email_id: str, mode
 
 
 def call_bitnet_server(email_body: str):
-    base_url = os.getenv("BITNET_SERVER_URL", "http://localhost:8000")
-    path = os.getenv("BITNET_SERVER_PATH", "/generate")
+    # Hardcoded local Bitnet/GPT-compatible chat endpoint
+    base_url = os.getenv("BITNET_SERVER_URL", "http://127.0.0.1:8080")
+    path = os.getenv("BITNET_SERVER_PATH", "/v1/chat/completions")
     timeout = int(os.getenv("SUMMARY_MODEL_TIMEOUT_SECONDS", "45"))
 
-    response = httpx.post(
-        f"{base_url}{path}",
-        json={"prompt": email_body},
-        timeout=timeout,
+    system_prompt = (
+        'You are a summarisation and extraction engine. Return exactly one minified valid JSON object '
+        'with exactly 4 keys in this order: "summary","money","time","actions". Do not output any text '
+        'before or after the JSON. Do not output markdown, code fences, labels, explanations, or newline characters. '
+        'Replace any line breaks with spaces. JSON KEY RULES- "summary" must be a short plain-text summary string. '
+        '"money" must be one extracted monetary/deal value like "$240" or "". "time" must be one extracted '
+        'schedule/deadline value like "3PM, THURSDAY" or "". "actions" must be an array of semantically dry, '
+        'response-oriented suggestions describing what the recipient should do next, each action short, neutral, '
+        'imperative, no narrative, no emotion, no duplication, no copied full email sentences, and [] if no clear '
+        'next step exists. Do not invent facts. If uncertain, use empty values.'
     )
+
+    payload = {
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": email_body},
+        ],
+        "temperature": 0.1,
+        "max_tokens": 150,
+        "stream": False,
+        "stop": ["}\n", "} "]
+    }
+
+    response = httpx.post(f"{base_url}{path}", json=payload, timeout=timeout)
     response.raise_for_status()
 
-    try:
-        return response.json()
-    except ValueError:
-        return {"text": response.text}
+    # Print the raw model response to the backend terminal exactly as returned.
+    print(response.text, flush=True)
+
+    # Return raw response text for downstream processing by user
+    return response.text
 
 
 

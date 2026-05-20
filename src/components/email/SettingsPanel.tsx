@@ -1,5 +1,6 @@
-import { useState } from "react";
 import { X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { THEME_OPTIONS, useTheme } from "@/components/theme/ThemeProvider";
 
 // Simple wallpaper options - you can customize these
 const wallpapers = [
@@ -20,6 +21,8 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ isOpen, onClose, currentWallpaper, onWallpaperChange }: SettingsPanelProps) {
+  const { theme, setTheme } = useTheme();
+
   if (!isOpen) return null;
 
   return (
@@ -35,6 +38,33 @@ export function SettingsPanel({ isOpen, onClose, currentWallpaper, onWallpaperCh
 
         {/* Content */}
         <div className="p-4">
+          <h3 className="text-sm font-medium mb-3">Theme</h3>
+          <div className="grid grid-cols-2 gap-2 mb-5">
+            {THEME_OPTIONS.map((option) => {
+              const isActive = theme === option.id;
+
+              return (
+                <button
+                  key={option.id}
+                  onClick={() => setTheme(option.id)}
+                  className={cn(
+                    "overflow-hidden rounded-lg border text-left transition-all",
+                    isActive ? "border-foreground shadow-lg" : "border-border hover:border-muted-foreground"
+                  )}
+                >
+                  <div className="h-16" style={{ background: option.preview }} />
+                  <div className="p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium">{option.name}</span>
+                      {isActive && <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Active</span>}
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">{option.description}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
           <h3 className="text-sm font-medium mb-3">Wallpaper</h3>
           <div className="grid grid-cols-3 gap-2">
             {wallpapers.map((wp) => (

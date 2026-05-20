@@ -10,39 +10,42 @@ import AuthCallback from "./pages/AuthCallback";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import ComingSoon from "./pages/ComingSoon";
+import { ThemeProvider } from "./components/theme/ThemeProvider";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <Toaster position="bottom-right" />
-    <BrowserRouter
-      future={{
-        v7_startTransition: true,
-        v7_relativeSplatPath: true,
-      }}
-    >
-      <Routes>
-        {/* Public routes */}
-        <Route path="/" element={<Landing />} />
-        <Route path="/landing" element={<Landing />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
+    <ThemeProvider>
+      <Toaster position="bottom-right" />
+      <BrowserRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<Landing />} />
+          <Route path="/landing" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
 
-        {/* for verification */}
-        {/* merge to main later */}
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/terms" element={<Terms />} />
-        <Route path="/coming-soon" element={<ComingSoon />} />
-        
-        {/* Auth callback */}
-        <Route path="/auth/callback" element={<AuthCallback />} />
-        
-        {/* Protected routes */}
-        <Route path="/inbox" element={<Index />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-      </Routes>
-    </BrowserRouter>
+          {/* for verification */}
+          {/* merge to main later */}
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/coming-soon" element={<ComingSoon />} />
+          
+          {/* Auth callback */}
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          
+          {/* Protected routes */}
+          <Route path="/inbox" element={<Index />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

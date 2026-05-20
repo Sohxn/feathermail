@@ -12,7 +12,8 @@ import { supabase } from '@/lib/supabase';
 // CONFIGURATION
 // ============================================================
 
-const API_BASE_URL = import.meta.env.VITE_FLASK_API_URL || 'http://localhost:5000';
+// Hardcoded backend URL for summary requests (overrides env during development)
+const API_BASE_URL = 'http://localhost:5000';
 
 // imap
 export interface ImapConnectPayload {
@@ -359,4 +360,17 @@ export async function trashEmail(emailId: string) {
     .eq('id', emailId);
   
   if (error) throw error;
+}
+
+// ============================================================
+// SUMMARY
+// ============================================================
+/**
+ * Request a summary from the backend. We only send the raw email body.
+ */
+export async function summarize(emailBody: string, senderId: string) {
+  return apiRequest('/api/summarize', {
+    method: 'POST',
+    body: JSON.stringify({ email_body: emailBody, sender_id: senderId }),
+  });
 }

@@ -8,112 +8,121 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    /* ── Core palette — dark theme, white text on dark/glass ── */
-    --background:            #0a0a0a;
-    --foreground:            #ffffff;
+  :root,
+  html[data-theme="midnight"] {
+    color-scheme: dark;
+
+    /* Core palette: black background, pastel accents, no hard surfaces */
+    --background:            #050507;
+    --foreground:            #f4f7fb;
 
     --card:                  transparent;
-    --card-foreground:       #ffffff;
+    --card-foreground:       #f4f7fb;
 
-    --popover:               #111111;
-    --popover-foreground:    #ffffff;
+    --popover:               #0b0d11;
+    --popover-foreground:    #f4f7fb;
 
-    --primary:               #ffffff;
-    --primary-foreground:    #0a0a0a;
+    --primary:               #d8ffe8;
+    --primary-foreground:    #060607;
 
-    --secondary:             rgba(255,255,255,0.10);
-    --secondary-foreground:  #ffffff;
+    --secondary:             rgba(255,255,255,0.06);
+    --secondary-foreground:  #f4f7fb;
 
-    --muted:                 rgba(255,255,255,0.08);
-    --muted-foreground:      rgba(255,255,255,0.45);
+    --muted:                 rgba(255,255,255,0.05);
+    --muted-foreground:      rgba(244,247,251,0.58);
 
-    --accent:                rgba(255,255,255,0.10);
-    --accent-foreground:     #ffffff;
+    --accent:                rgba(148, 255, 221, 0.12);
+    --accent-foreground:     #f4f7fb;
 
-    --destructive:           #ef4343;
+    --destructive:           #ff6b6b;
     --destructive-foreground:#ffffff;
 
-    --border:                rgba(255,255,255,0.12);
+    --border:                rgba(255,255,255,0.10);
     --input:                 rgba(255,255,255,0.08);
-    --ring:                  rgba(255,255,255,0.30);
+    --ring:                  rgba(173, 255, 221, 0.28);
 
     --radius:                0.375rem;
-    --red:                   #ff4444;
+    --red:                   #ff6b6b;
 
-    --mailbody:              rgba(255,255,255,0.75);
-    --mailbody-title:        #ffffff;
+    --mailbody:              rgba(244,247,251,0.78);
+    --mailbody-title:        #f4f7fb;
 
-    --email-hover:           rgba(255,255,255,0.06);
-    --email-selected:        rgba(255,255,255,0.12);
+    --email-hover:           rgba(255,255,255,0.05);
+    --email-selected:        rgba(173, 255, 221, 0.10);
 
     /* badges — keep as-is, they work on both themes */
-    --badge-proposal-bg: #13392b; --badge-proposal: #47d191;
-    --badge-followup-bg: #172c45; --badge-followup: #559ef6;
-    --badge-inquiry-bg:  #2a1c40; --badge-inquiry:  #a781e4;
-    --badge-invoice-bg:  #392813; --badge-invoice:  #f5b13d;
-    --badge-personal-bg: #401c2e; --badge-personal: #db70a6;
-    --badge-newsletter-bg:#272d35;--badge-newsletter:#8a96a8;
-    --badge-notification-bg:#292c32;--badge-notification:#89909f;
-    --badge-amount-bg:   #173622; --badge-amount:   #47d17a;
-    --badge-deadline-bg: #392213; --badge-deadline: #f08842;
-    --badge-overdue-bg:  #391313; --badge-overdue:  #e05252;
-    --badge-urgent-bg:   #392b13; --badge-urgent:   #e6ad4d;
+    --badge-proposal-bg: #13392b; --badge-proposal: #5de0a0;
+    --badge-followup-bg: #172c45; --badge-followup: #76b9ff;
+    --badge-inquiry-bg:  #2a1c40; --badge-inquiry:  #b79bff;
+    --badge-invoice-bg:  #392813; --badge-invoice:  #ffd166;
+    --badge-personal-bg: #401c2e; --badge-personal: #ff9fc9;
+    --badge-newsletter-bg:#272d35;--badge-newsletter:#a7b2c3;
+    --badge-notification-bg:#292c32;--badge-notification:#99a2b2;
+    --badge-amount-bg:   #173622; --badge-amount:   #5de0a0;
+    --badge-deadline-bg: #392213; --badge-deadline: #ffb86b;
+    --badge-overdue-bg:  #391313; --badge-overdue:  #ff7a7a;
+    --badge-urgent-bg:   #392b13; --badge-urgent:   #ffd36d;
 
     --sidebar-background:        transparent;
-    --sidebar-foreground:        #ffffff;
-    --sidebar-primary:           #ffffff;
-    --sidebar-primary-foreground:#0a0a0a;
-    --sidebar-accent:            rgba(255,255,255,0.10);
-    --sidebar-accent-foreground: #ffffff;
+    --sidebar-foreground:        #f4f7fb;
+    --sidebar-primary:           #d8ffe8;
+    --sidebar-primary-foreground:#060607;
+    --sidebar-accent:            rgba(255,255,255,0.06);
+    --sidebar-accent-foreground: #f4f7fb;
     --sidebar-border:            rgba(255,255,255,0.10);
-    --sidebar-ring:              rgba(255,255,255,0.30);
+    --sidebar-ring:              rgba(173, 255, 221, 0.28);
 
-    /* ── Liquid Glass tokens ── */
-    --lg-blur:       blur(18px);
-    --lg-saturate:   saturate(150%);
-    --lg-brightness: brightness(1.18);
+    --app-background:
+      radial-gradient(circle at 18% 12%, rgba(131, 239, 198, 0.12) 0%, transparent 32%),
+      radial-gradient(circle at 82% 16%, rgba(155, 177, 255, 0.10) 0%, transparent 28%),
+      radial-gradient(circle at 50% 100%, rgba(255, 183, 214, 0.08) 0%, transparent 36%),
+      linear-gradient(180deg, #050507 0%, #090b0f 55%, #050507 100%);
 
-    --lg-bg:         rgba(255,255,255,0.06);
-    --lg-bg-hover:   rgba(255,255,255,0.10);
-    --lg-bg-active:  rgba(255,255,255,0.15);
-    --lg-bg-dark:    rgba(0,0,0,0.35);
+    /* Liquid glass tokens */
+    --lg-blur:       blur(14px);
+    --lg-saturate:   saturate(128%);
+    --lg-brightness: brightness(1.05);
 
-    --lg-border:       rgba(255,255,255,0.0);
-    --lg-border-hover: rgba(255,255,255,0.0);
+    --lg-bg:         rgba(8, 10, 14, 0.82);
+    --lg-bg-hover:   rgba(14, 16, 21, 0.90);
+    --lg-bg-active:  rgba(20, 22, 28, 0.96);
+    --lg-bg-dark:    rgba(2, 3, 5, 0.88);
+
+    --lg-border:       rgba(255,255,255,0.04);
+    --lg-border-hover: rgba(173, 255, 221, 0.10);
 
     --lg-inset:
-      inset 0   1px 0  rgba(255,255,255,0.55),
-      inset 0  -1px 0  rgba(255,255,255,0.04),
-      inset 1px  0  0  rgba(255,255,255,0.22),
-      inset -1px 0  0  rgba(0,0,0,0.08),
-      0 0 0 0.5px rgba(255,255,255,0.18);
+      inset 0   1px 0  rgba(255,255,255,0.10),
+      inset 0  -1px 0  rgba(255,255,255,0.03),
+      inset 1px  0  0  rgba(255,255,255,0.06),
+      inset -1px 0  0  rgba(0,0,0,0.10),
+      0 0 0 0.5px rgba(255,255,255,0.08);
 
     --lg-inset-hover:
-      inset 0   1px 0  rgba(255,255,255,0.70),
-      inset 0  -1px 0  rgba(255,255,255,0.06),
-      inset 1px  0  0  rgba(255,255,255,0.30),
-      inset -1px 0  0  rgba(0,0,0,0.06),
-      0 0 0 0.5px rgba(255,255,255,0.28);
+      inset 0   1px 0  rgba(255,255,255,0.14),
+      inset 0  -1px 0  rgba(255,255,255,0.05),
+      inset 1px  0  0  rgba(255,255,255,0.08),
+      inset -1px 0  0  rgba(0,0,0,0.08),
+      0 0 0 0.5px rgba(173, 255, 221, 0.14);
 
     --lg-shadow-sm:
-      0 2px 8px   rgba(0,0,0,0.28),
-      0 1px 2px   rgba(0,0,0,0.18),
-      0 0 0 0.5px rgba(255,255,255,0.12);
+      0 10px 28px rgba(0,0,0,0.26),
+      0 1px 2px rgba(0,0,0,0.20),
+      0 0 0 0.5px rgba(255,255,255,0.06);
     --lg-shadow-md:
-      0 4px 20px  rgba(0,0,0,0.35),
-      0 1px 4px   rgba(0,0,0,0.20),
-      0 0 0 0.5px rgba(255,255,255,0.16);
+      0 14px 36px rgba(0,0,0,0.32),
+      0 2px 6px rgba(0,0,0,0.18),
+      0 0 0 0.5px rgba(173, 255, 221, 0.10);
     --lg-shadow-lg:
-      0 8px 32px  rgba(0,0,0,0.42),
-      0 2px 8px   rgba(0,0,0,0.22),
-      0 0 0 0.5px rgba(255,255,255,0.20);
+      0 22px 48px rgba(0,0,0,0.38),
+      0 4px 10px rgba(0,0,0,0.20),
+      0 0 0 0.5px rgba(173, 255, 221, 0.14);
 
     --lg-glare: radial-gradient(
       ellipse 70% 40% at 40% -10%,
-      rgba(255,255,255,0.28) 0%,
-      rgba(255,255,255,0.05) 45%,
-      transparent 65%
+      rgba(173, 255, 221, 0.16) 0%,
+      rgba(255,255,255,0.04) 48%,
+      transparent 68%
     );
 
     --lg-transition:
@@ -123,7 +132,108 @@
       transform    100ms ease;
   }
 
-  /* ── No .dark block — single unified dark theme ── */
+  html[data-theme="aurora"] {
+    --background:            #05060a;
+    --foreground:            #f4f8ff;
+    --secondary:             rgba(255,255,255,0.07);
+    --muted:                 rgba(255,255,255,0.06);
+    --accent:                rgba(120, 220, 255, 0.14);
+    --border:                rgba(255,255,255,0.12);
+    --ring:                  rgba(120, 220, 255, 0.30);
+    --email-selected:        rgba(120, 220, 255, 0.12);
+    --sidebar-primary:       #c8f5ff;
+    --sidebar-ring:          rgba(120, 220, 255, 0.30);
+    --app-background:
+      radial-gradient(circle at 18% 12%, rgba(120, 220, 255, 0.16) 0%, transparent 30%),
+      radial-gradient(circle at 82% 18%, rgba(255, 171, 214, 0.12) 0%, transparent 30%),
+      radial-gradient(circle at 50% 100%, rgba(168, 255, 224, 0.08) 0%, transparent 34%),
+      linear-gradient(180deg, #04050a 0%, #090d16 55%, #05060a 100%);
+    --lg-blur: blur(18px);
+    --lg-saturate: saturate(150%);
+    --lg-brightness: brightness(1.10);
+    --lg-bg: rgba(10, 14, 20, 0.72);
+    --lg-bg-hover: rgba(16, 20, 28, 0.80);
+    --lg-bg-active: rgba(22, 28, 38, 0.88);
+    --lg-bg-dark: rgba(4, 7, 11, 0.82);
+    --lg-border-hover: rgba(120, 220, 255, 0.16);
+    --lg-inset-hover:
+      inset 0   1px 0  rgba(255,255,255,0.16),
+      inset 0  -1px 0  rgba(255,255,255,0.05),
+      inset 1px  0  0  rgba(255,255,255,0.10),
+      inset -1px 0  0  rgba(0,0,0,0.08),
+      0 0 0 0.5px rgba(120, 220, 255, 0.18);
+  }
+
+  html[data-theme="liquid"] {
+    --background:            #07090d;
+    --foreground:            #ffffff;
+    --secondary:             rgba(255,255,255,0.10);
+    --muted:                 rgba(255,255,255,0.08);
+    --accent:                rgba(255,255,255,0.10);
+    --border:                rgba(255,255,255,0.12);
+    --ring:                  rgba(255,255,255,0.30);
+    --email-selected:        rgba(255,255,255,0.12);
+    --app-background:
+      radial-gradient(circle at 18% 12%, rgba(120, 150, 255, 0.12) 0%, transparent 30%),
+      radial-gradient(circle at 82% 18%, rgba(255, 165, 200, 0.12) 0%, transparent 30%),
+      linear-gradient(180deg, #050608 0%, #090b10 54%, #050608 100%);
+    --lg-blur: blur(18px);
+    --lg-saturate: saturate(150%);
+    --lg-brightness: brightness(1.18);
+    --lg-bg: rgba(255,255,255,0.06);
+    --lg-bg-hover: rgba(255,255,255,0.10);
+    --lg-bg-active: rgba(255,255,255,0.15);
+    --lg-bg-dark: rgba(0,0,0,0.35);
+    --lg-border: rgba(255,255,255,0.0);
+    --lg-border-hover: rgba(255,255,255,0.0);
+    --lg-inset:
+      inset 0   1px 0  rgba(255,255,255,0.55),
+      inset 0  -1px 0  rgba(255,255,255,0.04),
+      inset 1px  0  0  rgba(255,255,255,0.22),
+      inset -1px 0  0  rgba(0,0,0,0.08),
+      0 0 0 0.5px rgba(255,255,255,0.18);
+    --lg-inset-hover:
+      inset 0   1px 0  rgba(255,255,255,0.70),
+      inset 0  -1px 0  rgba(255,255,255,0.06),
+      inset 1px  0  0  rgba(255,255,255,0.30),
+      inset -1px 0  0  rgba(0,0,0,0.06),
+      0 0 0 0.5px rgba(255,255,255,0.28);
+    --lg-glare: radial-gradient(
+      ellipse 70% 40% at 40% -10%,
+      rgba(255,255,255,0.28) 0%,
+      rgba(255,255,255,0.05) 45%,
+      transparent 65%
+    );
+  }
+
+  html[data-theme="graphite"] {
+    --background:            #040405;
+    --foreground:            #eef1f5;
+    --secondary:             rgba(255,255,255,0.05);
+    --muted:                 rgba(255,255,255,0.04);
+    --accent:                rgba(190, 206, 255, 0.10);
+    --border:                rgba(255,255,255,0.08);
+    --ring:                  rgba(190, 206, 255, 0.18);
+    --email-selected:        rgba(190, 206, 255, 0.08);
+    --app-background:
+      radial-gradient(circle at 18% 12%, rgba(190, 206, 255, 0.08) 0%, transparent 28%),
+      linear-gradient(180deg, #040405 0%, #09090b 58%, #040405 100%);
+    --lg-blur: blur(8px);
+    --lg-saturate: saturate(115%);
+    --lg-brightness: brightness(1.02);
+    --lg-bg: rgba(10, 10, 12, 0.92);
+    --lg-bg-hover: rgba(18, 18, 20, 0.96);
+    --lg-bg-active: rgba(24, 24, 28, 1);
+    --lg-border: rgba(255,255,255,0.06);
+    --lg-border-hover: rgba(190, 206, 255, 0.08);
+    --lg-inset:
+      inset 0   1px 0  rgba(255,255,255,0.06),
+      inset 0  -1px 0  rgba(255,255,255,0.03),
+      0 0 0 0.5px rgba(255,255,255,0.06);
+    --lg-shadow-sm:
+      0 6px 18px rgba(0,0,0,0.34),
+      0 0 0 0.5px rgba(255,255,255,0.05);
+  }
 }
 
 @layer base {
@@ -133,7 +243,7 @@
 
   html {
     font-family: "Roboto Mono", monospace;
-    background-image: url('../wallpaper/liquid_colour.png');
+    background: var(--app-background);
     background-repeat: no-repeat;
     background-position: center center;
     background-size: cover;
