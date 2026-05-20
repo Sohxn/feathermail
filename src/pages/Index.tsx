@@ -8,9 +8,17 @@ import EmailSidebar from "@/components/email/EmailSidebar";
 import EmailListItem from "@/components/email/EmailListItem";
 import EmailView from "@/components/email/EmailView";
 import { ComposeModal, ComposeInitData } from "@/components/email/ComposeModal";
+import { SettingsPanel } from "@/components/email/SettingsPanel";
 import { RefreshCw, Menu, ArrowLeft, PenSquare } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { isDev } from "@/lib/devMode";
+
+function getSavedWallpaper(): string {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("wallpaper") || "";
+  }
+  return "";
+}
 
 type MobilePanel = "sidebar" | "list" | "email";
 
@@ -25,7 +33,9 @@ export default function Index() {
 
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("list");
   const [isComposeOpen, setIsComposeOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [composeData, setComposeData] = useState<ComposeInitData | undefined>();
+  const [wallpaper, setWallpaper] = useState(getSavedWallpaper);
 
   const openCompose = useCallback((initialData?: ComposeInitData) => {
     setComposeData(initialData);
@@ -35,6 +45,11 @@ export default function Index() {
   const closeCompose = useCallback(() => {
     setIsComposeOpen(false);
     setTimeout(() => setComposeData(undefined), 300);
+  }, []);
+
+  const handleWallpaperChange = useCallback((newWallpaper: string) => {
+    setWallpaper(newWallpaper);
+    localStorage.setItem("wallpaper", newWallpaper);
   }, []);
 
   const accounts          = useEmailStore(state => state.accounts);
@@ -199,7 +214,7 @@ export default function Index() {
           activeFolder={activeFolder}
           onFolderChange={(f) => { setActiveFolder(f as any); setMobilePanel("list"); }}
           onCompose={() => { openCompose(); setMobilePanel("list"); }}
-          onOpenSettings={() => toast.info("Settings coming soon")}
+          onOpenSettings={() => setIsSettingsOpen(true)}
           folderCounts={folderCounts}
           accounts={accounts}
           selectedAccountId={selectedAccountId}
@@ -325,6 +340,13 @@ export default function Index() {
         isOpen={isComposeOpen}
         onClose={closeCompose}
         initData={composeData}
+      />
+
+      <SettingsPanel
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        currentWallpaper={wallpaper}
+        onWallpaperChange={handleWallpaperChange}
       />
     </div>
   );

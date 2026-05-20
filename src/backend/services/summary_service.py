@@ -109,7 +109,7 @@ def call_bitnet_server(email_body: str):
         'You are an email summarisation and extraction engine. Return exactly one minified valid JSON object '
         'with exactly 4 keys in this order: "summary","money","time","actions". Do not output any text '
         'before or after the JSON. Do not output markdown, code fences, labels, explanations, or newline characters. '
-        'Replace any line breaks with spaces. JSON KEY RULES- "summary" must be a short plain-text summary string that explains the email. '
+        'Replace any line breaks with spaces. JSON KEY RULES- "summary" must be a short plain-text string. '
         '"money" must be one extracted monetary/deal value like "$240" or "". "time" must be one extracted '
         'schedule/deadline value like "3PM, THURSDAY" or "". "actions" must be an array of semantically dry, '
         'response-oriented suggestions describing what the recipient should do next, each action short, neutral, '
