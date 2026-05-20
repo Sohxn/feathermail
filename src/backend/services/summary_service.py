@@ -89,8 +89,8 @@ def run_summary_worker(job_key: str, email_body: str, sender_email_id: str, mode
 
 def call_bitnet_server(email_body: str):
     # Hardcoded local Bitnet/GPT-compatible chat endpoint
-    base_url = os.getenv("BITNET_SERVER_URL", "http://127.0.0.1:8080")
-    path = os.getenv("BITNET_SERVER_PATH", "/v1/chat/completions")
+    base_url = "http://127.0.0.1:8080"
+    path = "/v1/chat/completions"
     timeout = int(os.getenv("SUMMARY_MODEL_TIMEOUT_SECONDS", "45"))
 
     system_prompt = (
