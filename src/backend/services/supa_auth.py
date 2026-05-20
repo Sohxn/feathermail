@@ -167,16 +167,31 @@ class SupabaseService:
     def insert_summary(self, job_key: str, sender_email_id: str, model_name: str, content_hash: str, prompt_version: str, summary_text: str, ttl_days: int = 30):
         expires_at = (datetime.now(timezone.utc) + timedelta(days=ttl_days)).isoformat()
         row = {
-            "job_key": job_key,
             "email_id": sender_email_id,
             "model_name": model_name,
             "content_hash": content_hash,
             "prompt_version": prompt_version,
             "summary_text": summary_text,
+            "status": "completed",
             "expires_at": expires_at,
             "created_at": self._now_iso(),
         }
-        result = self.client.table('summaries').upsert(row, on_conflict='job_key').execute()
+
+        existing = self.client.table('summaries')\
+            .select('id')\
+            .eq('email_id', sender_email_id)\
+            .eq('model_name', model_name)\
+            .eq('content_hash', content_hash)\
+            .eq('prompt_version', prompt_version)\
+            .limit(1)\
+            .execute()
+
+        if existing.data:
+            summary_id = existing.data[0]['id']
+            result = self.client.table('summaries').update(row).eq('id', summary_id).execute()
+        else:
+            result = self.client.table('summaries').insert(row).execute()
+
         return result.data
 
     def get_cached_summary(self, job_key: str):
