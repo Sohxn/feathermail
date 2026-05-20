@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 
-export type ThemeName = "midnight" | "aurora" | "liquid" | "graphite";
+export type ThemeName = "midnight" | "aurora" | "liquid" | "graphite" | "neo";
 
 export const THEME_OPTIONS: Array<{
   id: ThemeName;
@@ -31,6 +31,12 @@ export const THEME_OPTIONS: Array<{
     name: "Graphite",
     description: "Low-gloss, minimal, and more solid.",
     preview: "linear-gradient(135deg, #050505 0%, #131313 52%, #2a2a2a 100%)",
+  },
+  {
+    id: "neo",
+    name: "Neo",
+    description: "Solid, non-transparent UI — no glass effects.",
+    preview: "linear-gradient(135deg, #f6f7f9 0%, #e6e8eb 100%)",
   },
 ];
 
