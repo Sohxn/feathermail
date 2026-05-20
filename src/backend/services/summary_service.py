@@ -99,7 +99,8 @@ def run_summary_worker(job_key: str, email_body: str, sender_email_id: str, mode
 
 
 def call_bitnet_server(email_body: str):
-    base_url = "http://127.0.0.1:8080"
+    # Allow overriding the model server URL via env var for tunneling (ngrok) or remote deploys
+    base_url = os.getenv("BITNET_SERVER_URL", "http://127.0.0.1:8080")
     path = "/v1/chat/completions"
     timeout = int(os.getenv("SUMMARY_MODEL_TIMEOUT_SECONDS", "45"))
 
