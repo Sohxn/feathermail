@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import os
+import re
 import threading
 from datetime import datetime, timezone
 
@@ -17,6 +18,16 @@ supabase_service = SupabaseService(
     Config.supabase_key
 )
 
+#HELPER FUNCTIONS
+
+#remove unnecessary expressions from email body text (HTML tags, URLs, extra whitespace)
+def trim_email_body(raw: str) -> str:
+    text = re.sub(r'<[^>]+>', ' ', raw)
+    text = re.sub(r'https?://\S+', ' ', text)
+    text = re.sub(r'mailto:\S+', ' ', text)
+    text = re.sub(r'ftp://\S+', ' ', text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
 
 #SHA256 
 def generate_content_hash(mail_body: str) -> str:
@@ -88,7 +99,6 @@ def run_summary_worker(job_key: str, email_body: str, sender_email_id: str, mode
 
 
 def call_bitnet_server(email_body: str):
-    # Hardcoded local Bitnet/GPT-compatible chat endpoint
     base_url = "http://127.0.0.1:8080"
     path = "/v1/chat/completions"
     timeout = int(os.getenv("SUMMARY_MODEL_TIMEOUT_SECONDS", "45"))

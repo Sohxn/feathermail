@@ -202,6 +202,9 @@ export default function EmailLayout() {
         onCompose={() => setIsComposeOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         folderCounts={folderCounts}
+        accounts={[]}
+        selectedAccountId={null}
+        onAccountChange={() => {}}
       />
       <EmailList
         emails={filteredEmails}

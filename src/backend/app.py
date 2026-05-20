@@ -9,10 +9,18 @@ from services.gmail_push import GmailPushService
 import json 
 import base64
 from services.imap_service import ImapService
+from services.summary_service import (
+    trim_email_body,
+    generate_content_hash,
+    generate_job_key,
+    cache_check,
+    fetch_or_generate_summary,
+)
 import threading
 import gc
 import time #just in case 
 from datetime import datetime, timedelta #ok i definitely need this 
+import re
 
 #testing
 app = Flask(__name__)
@@ -647,6 +655,34 @@ def gmail_webhook():
                 email_data['account_id'] = account['id']
             
             supabase_service.save_emails_batch(result['emails'])
+
+            # Summarisation for each newly received email body
+            for email_data in result['emails']:
+                raw_email_body = email_data.get('body_text') or ''
+                if not raw_email_body:
+                    print(f"Skipping summary for {email_data.get('id', 'unknown')} — no body_text", flush=True)
+                    continue
+
+                email_body = trim_email_body(raw_email_body)
+
+                sender_email = account['email_address']
+                model_name = 'bitnet'
+                prompt_version = 'v1'
+                content_hash = generate_content_hash(email_body)
+                job_key = generate_job_key(sender_email, model_name, prompt_version, content_hash)
+
+                print(
+                    f"Starting summary job for {sender_email} email={email_data.get('id', 'unknown')} job_key={job_key}",
+                    flush=True,
+                )
+                fetch_or_generate_summary(
+                    job_key,
+                    email_body,
+                    sender_email,
+                    model_name,
+                    content_hash,
+                    prompt_version,
+                )
             
             # Update history ID
             supabase_service.update_account_history_id(
@@ -665,13 +701,6 @@ def gmail_webhook():
 # summarisation endpoint
 @app.route('/api/summarize', methods=['POST'])
 def summarize():
-    from services.summary_service import (
-        generate_content_hash,
-        generate_job_key,
-        cache_check,
-        fetch_or_generate_summary,
-    )
-
     data = request.get_json(silent=True) or {}
     email_body = data.get('email_body')
     sender_id = data.get('sender_id')
