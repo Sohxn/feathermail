@@ -180,6 +180,8 @@
     --ring:                  rgba(255,255,255,0.30);
     --email-selected:        rgba(255,255,255,0.12);
     --app-background:
+      /* subtle magenta tint from top-left to bottom */
+      linear-gradient(135deg, rgba(255, 0, 128, 0.12) 0%, rgba(255, 0, 128, 0.04) 100%),
       radial-gradient(circle at 18% 12%, rgba(120, 150, 255, 0.12) 0%, transparent 30%),
       radial-gradient(circle at 82% 18%, rgba(255, 165, 200, 0.12) 0%, transparent 30%),
       linear-gradient(180deg, #050608 0%, #090b10 54%, #050608 100%);
