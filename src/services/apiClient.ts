@@ -12,8 +12,9 @@ import { supabase } from '@/lib/supabase';
 // CONFIGURATION
 // ============================================================
 
-// Hardcoded backend URL for summary requests (overrides env during development)
-const API_BASE_URL = 'http://localhost:5000';
+// Backend URL comes from the environment so deployed builds talk to Render,
+// while local development still falls back to localhost.
+const API_BASE_URL = import.meta.env.VITE_FLASK_API_URL || 'http://localhost:5000';
 
 // imap
 export interface ImapConnectPayload {
