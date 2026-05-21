@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 
-const MICROSOFT_CLIENT_ID = import.meta.env.VITE_MICROSOFT_CLIENT_ID;
+const MICROSOFT_CLIENT_ID =
+  import.meta.env.VITE_MICROSOFT_CLIENT_ID || import.meta.env.VITE_OUTLOOK_CLIENT_ID;
 const MICROSOFT_REDIRECT_URI = import.meta.env.VITE_REDIRECT_URI;
 const MICROSOFT_TENANT = import.meta.env.VITE_MICROSOFT_TENANT_ID || 'common'; // allows personal + work accounts
 
@@ -16,7 +17,6 @@ const SCOPES = [
 ].join(' ');
 
 export function initiateOutlookAuth() {
-  // Mark this redirect as Outlook/Microsoft so callback handler knows which provider
   localStorage.setItem('outlook_auth', 'true');
 
   const authUrl =

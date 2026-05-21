@@ -102,21 +102,19 @@ class OutlookService:
             '$select':  'id,subject,from,toRecipients,ccRecipients,receivedDateTime,'
                         'body,bodyPreview,isRead,flag,parentFolderId',
         }
-        data = self._graph_get(
-            f'/me/mailFolders/inbox/messages?'
-            + '&'.join(f'{k}={requests.utils.quote(str(v))}' for k, v in params.items()),
-            access_token,
+        resp = requests.get(
+            f'{GRAPH_BASE}/me/mailFolders/inbox/messages',
+            headers={'Authorization': f'Bearer {access_token}'},
+            params=params,
         )
+        resp.raise_for_status()
+        data = resp.json()
         emails = [self._parse_message(m) for m in data.get('value', [])]
         return {'emails': emails, 'is_full_sync': True}
 
     def fetch_emails_delta(self, access_token: str, delta_link: str | None,
                            max_results: int = 50) -> dict:
-        """
-        Delta sync — only returns messages changed since last delta_link.
-        On first call pass delta_link=None to get the initial snapshot.
-        Returns { emails, delta_link, is_full_sync }.
-        """
+        """Fetch messages changed since the last delta link."""
         if delta_link:
             resp = requests.get(
                 delta_link,
@@ -138,7 +136,6 @@ class OutlookService:
         emails = [self._parse_message(m) for m in data.get('value', [])
                   if not m.get('@removed')]
 
-        # Microsoft returns the next delta link at the last page
         next_delta = data.get('@odata.deltaLink') or data.get('@odata.nextLink')
 
         return {
@@ -190,7 +187,7 @@ class OutlookService:
         is_starred = msg.get('flag', {}).get('flagStatus') == 'flagged'
 
         return {
-            'gmail_id':    msg['id'],          # reuse column
+            'gmail_id':    msg['id'],
             'thread_id':   msg.get('conversationId', msg['id']),
             'subject':     msg.get('subject') or '(No Subject)',
             'from_email':  from_addr.get('address', ''),

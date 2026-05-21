@@ -16,6 +16,7 @@ export default function AuthCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const setAccounts = useEmailStore(state => state.setAccounts);
+  const isOutlookAuth = localStorage.getItem('outlook_auth') === 'true';
   
   useEffect(() => {
     handleCallback();
@@ -39,17 +40,13 @@ export default function AuthCallback() {
     }
 
     try {
-      // Detect which provider by checking which redirect URI was used.
-      // Microsoft Graph sends the callback to the same endpoint.
-      // We distinguish by checking if this is an Outlook auth via a flag in localStorage.
-      const isOutlook = localStorage.getItem('outlook_auth') === 'true';
-      localStorage.removeItem('outlook_auth');
-
-      if (isOutlook) {
+      if (isOutlookAuth) {
         await api.connectOutlookAccount(code);
       } else {
         await api.connectGmailAccount(code);
       }
+
+      localStorage.removeItem('outlook_auth');
 
       const accounts = await api.fetchEmailAccounts();
       setAccounts(accounts);
@@ -68,7 +65,9 @@ export default function AuthCallback() {
     <div className="min-h-screen bg-black flex items-center justify-center">
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-        <p className="text-white text-xl">Connecting your Gmail account...</p>
+        <p className="text-white text-xl">
+          Connecting your {isOutlookAuth ? 'Outlook' : 'Gmail'} account...
+        </p>
       </div>
     </div>
   );

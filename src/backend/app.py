@@ -199,22 +199,13 @@ def gmail_oauth_callback():
 
 # ── SYNC ──────────────────────────────────────────────────────────────────
 def run_initial_gmail_backfill(user_id: str, account: dict):
-    """
-    Memory-safe backfill for newly connected accounts.
-    
-    Instead of loading everything into RAM at once:
-    - Collect ALL message IDs first (just strings, ~50 bytes each)
-    - Process in chunks of 25 with 2 workers max
-    - Sleep between chunks to let GC breathe
-    - Signal frontend via backfill_complete flag when done
-    """
+    """Backfill newly connected Gmail accounts in chunks."""
     try:
         account_id    = account['id']
         email_address = account['email_address']
         access_token  = account['access_token']
         refresh_token = account['refresh_token']
 
-        # ── Step 1: Collect all message IDs (no bodies, very lightweight) ──
         print(f"{email_address}: collecting message IDs for backfill...", flush=True)
         all_message_ids = []
         page_token = None
@@ -242,7 +233,6 @@ def run_initial_gmail_backfill(user_id: str, account: dict):
         total_ids = len(all_message_ids)
         print(f"{email_address}: found {total_ids} messages to backfill", flush=True)
 
-        # ── Step 2: Process in small chunks ──────────────────────────────
         CHUNK_SIZE   = 25   # emails fetched in parallel per round
         MAX_WORKERS  = 2    # threads — safe for 0.5 CPU / 512MB RAM
         SLEEP_SECS   = 2    # pause between chunks
@@ -253,7 +243,6 @@ def run_initial_gmail_backfill(user_id: str, account: dict):
         for i in range(0, total_ids, CHUNK_SIZE):
             chunk_ids = all_message_ids[i : i + CHUNK_SIZE]
 
-            # Fetch full email details for this chunk only
             emails = gmail_service.fetch_details_parallel(
                 access_token,
                 refresh_token,
@@ -261,12 +250,10 @@ def run_initial_gmail_backfill(user_id: str, account: dict):
                 max_workers=MAX_WORKERS,
             )
 
-            # Stamp IDs
             for email_data in emails:
                 email_data['user_id']   = user_id
                 email_data['account_id'] = account_id
 
-            # Save chunk to DB
             if emails:
                 saved = supabase_service.save_emails_batch(emails)
                 total_saved += len(saved) if saved else 0
@@ -279,14 +266,11 @@ def run_initial_gmail_backfill(user_id: str, account: dict):
                 flush=True,
             )
 
-            # Explicitly free chunk data and hint GC
             del emails
             gc.collect()
 
-            # Breathe — don't hammer CPU/RAM/Gmail API back to back
             time.sleep(SLEEP_SECS)
 
-        # ── Step 3: Save final history_id for future incremental syncs ───
         profile  = service.users().getProfile(userId='me').execute()
         history_id = profile.get('historyId')
 
@@ -302,7 +286,6 @@ def run_initial_gmail_backfill(user_id: str, account: dict):
             flush=True,
         )
 
-        # ── Step 4: Signal frontend via Realtime ─────────────────────────
         supabase_service.client.table('email_accounts')\
             .update({'backfill_complete': True})\
             .eq('id', account_id)\
@@ -456,24 +439,21 @@ def connect_imap():
         smtp_host = settings['smtp_host']
         smtp_port = settings['smtp_port']
  
-        # ── 1. Test the connection before saving anything ──────────────────
         ok, err_msg = imap_service.test_connection(imap_host, imap_port, email, password)
         if not ok:
             return jsonify({'success': False, 'error': err_msg}), 400
  
-        # ── 2. Check whether this is the user's first account ─────────────
         existing = supabase_service.client.table('email_accounts') \
             .select('id') \
             .eq('user_id', user_id) \
             .execute()
         is_first = len(existing.data) == 0
  
-        # ── 3. Save to the database ────────────────────────────────────────
         account_data = {
             'user_id':       user_id,
             'email_address': email,
             'provider':      provider,
-            'password':      password,      # TODO: encrypt before storing
+            'password':      password,
             'imap_host':     imap_host,
             'imap_port':     imap_port,
             'smtp_host':     smtp_host,
@@ -516,9 +496,9 @@ def sync_imap():
         if account_id:
             accounts = [supabase_service.get_email_account(account_id)]
         else:
-            # All IMAP/yahoo/outlook accounts for this user
+            # Only IMAP-compatible accounts. Outlook is synced via Microsoft Graph.
             all_accounts = supabase_service.get_user_email_accounts(user_id)
-            accounts = [a for a in all_accounts if a.get('provider') != 'gmail']
+            accounts = [a for a in all_accounts if a.get('provider') in {'yahoo', 'imap'}]
  
         if not accounts:
             return jsonify({'success': True, 'synced': 0, 'accounts_synced': 0})
@@ -814,7 +794,7 @@ def sync_outlook():
         total_saved = 0
 
         for account in accounts:
-            delta_link = account.get('last_history_id')  # reuse column for delta link
+            delta_link = account.get('last_history_id')
 
             result = outlook_service.fetch_emails_delta(
                 access_token=account['access_token'],
