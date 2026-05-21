@@ -714,21 +714,21 @@ def gmail_webhook():
 def summarize():
     data = request.get_json(silent=True) or {}
     email_body = data.get('email_body')
-    sender_id = data.get('sender_id')
+    email_id = data.get('email_id') or data.get('sender_id')
     model_name = data.get('model_name', 'bitnet')
     prompt_version = data.get('prompt_version', 'v1')
 
-    if not email_body or not sender_id:
-        return jsonify({'error': 'email_body and sender_id are required'}), 400
+    if not email_body or not email_id:
+        return jsonify({'error': 'email_body and email_id are required'}), 400
 
-    cached_summary = cache_check(sender_id, model_name, email_body, prompt_version)
+    cached_summary = cache_check(email_id, model_name, email_body, prompt_version)
     if cached_summary:
         return jsonify({'status': 'cached', 'summary': cached_summary}), 200
 
     content_hash = generate_content_hash(email_body)
-    job_key = generate_job_key(sender_id, model_name, prompt_version, content_hash)
+    job_key = generate_job_key(email_id, model_name, prompt_version, content_hash)
 
-    result = fetch_or_generate_summary(job_key, email_body, sender_id, model_name, content_hash, prompt_version)
+    result = fetch_or_generate_summary(job_key, email_body, email_id, model_name, content_hash, prompt_version)
     return jsonify(result), 202
 
 

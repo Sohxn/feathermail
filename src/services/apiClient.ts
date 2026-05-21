@@ -366,11 +366,11 @@ export async function trashEmail(emailId: string) {
 // SUMMARY
 // ============================================================
 /**
- * Request a summary from the backend. We only send the raw email body.
+ * Request a summary from the backend. We only send the raw email body and the email row id.
  */
-export async function summarize(emailBody: string, senderId: string) {
+export async function summarize(emailBody: string, emailId: string) {
   return apiRequest('/api/summarize', {
     method: 'POST',
-    body: JSON.stringify({ email_body: emailBody, sender_id: senderId }),
+    body: JSON.stringify({ email_body: emailBody, email_id: emailId }),
   });
 }
