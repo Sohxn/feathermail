@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useEmailStore } from "@/store/emailStore";
 import { initiateGmailAuth } from "@/lib/google_auth";
+import { initiateOutlookAuth } from "@/lib/outlook_auth";
 import * as api from "@/services/apiClient";
 import { connectImapAccount, ImapConnectPayload } from "@/services/apiClient";
 import { toast } from "sonner";
@@ -106,6 +107,11 @@ export default function Dashboard() {
     initiateGmailAuth();
   };
 
+  const handleAddOutlook = () => {
+    localStorage.setItem('adding_account', 'true');
+    initiateOutlookAuth();
+  };
+
   const handleGoToInbox = () => {
     if (accounts.length === 0) { toast.error('Add an account first'); return; }
     navigate("/inbox");
@@ -181,6 +187,9 @@ export default function Dashboard() {
                 <button onClick={handleAddGmail} className="px-4 py-2 glass rounded-xl hover:opacity-90">
                   Connect Gmail
                 </button>
+                <button onClick={handleAddOutlook} className="px-4 py-2 glass rounded-xl hover:opacity-90">
+                  Connect Outlook
+                </button>
                 <button onClick={() => setShowImapForm(true)} className="px-4 py-2 glass rounded-xl hover:opacity-90">
                   Connect Yahoo / Other
                 </button>
@@ -233,6 +242,10 @@ export default function Dashboard() {
                 <button onClick={handleAddGmail}
                   className="flex-1 border border-dashed border-border rounded-xl p-4 text-muted-foreground hover:border-foreground hover:text-foreground transition-colors text-sm">
                   + Add Gmail account
+                </button>
+                <button onClick={handleAddOutlook}
+                  className="flex-1 border border-dashed border-border rounded-xl p-4 text-muted-foreground hover:border-foreground hover:text-foreground transition-colors text-sm">
+                  + Add Outlook account
                 </button>
                 <button onClick={() => setShowImapForm(true)}
                   className="flex-1 border border-dashed border-border rounded-xl p-4 text-muted-foreground hover:border-foreground hover:text-foreground transition-colors text-sm">

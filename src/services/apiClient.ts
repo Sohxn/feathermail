@@ -157,6 +157,19 @@ export async function connectGmailAccount(authCode: string) {
 }
 
 /**
+ * Connect an Outlook account (Microsoft Graph) via OAuth
+ */
+export async function connectOutlookAccount(authCode: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Not authenticated');
+
+  return apiRequest('/api/outlook/oauth/callback', {
+    method: 'POST',
+    body: JSON.stringify({ code: authCode, user_id: user.id }),
+  });
+}
+
+/**
  * Remove an email account
  */
 export async function removeEmailAccount(accountId: string) {
@@ -256,19 +269,25 @@ export async function syncEmails() {
  
   const accounts = await fetchEmailAccounts();
  
-  const gmailAccounts = accounts.filter((a: any) => a.provider === 'gmail');
-  const imapAccounts  = accounts.filter((a: any) => a.provider !== 'gmail');
- 
+  const gmailAccounts   = accounts.filter((a: any) => a.provider === 'gmail');
+  const outlookAccounts = accounts.filter((a: any) => a.provider === 'outlook');
+  const imapAccounts    = accounts.filter((a: any) => !['gmail', 'outlook'].includes(a.provider));
+
   const results = await Promise.allSettled([
-    // Gmail sync (one call covers all Gmail accounts)
     gmailAccounts.length > 0
       ? apiRequest('/api/gmail/sync', {
           method: 'POST',
           body: JSON.stringify({ user_id: user.id }),
         })
-      : Promise.resolve({ synced: 0, accounts_synced: 0 }),
- 
-    // One IMAP sync call per account (they don't share tokens)
+      : Promise.resolve({ synced: 0 }),
+
+    outlookAccounts.length > 0
+      ? apiRequest('/api/outlook/sync', {
+          method: 'POST',
+          body: JSON.stringify({ user_id: user.id }),
+        })
+      : Promise.resolve({ synced: 0 }),
+
     ...imapAccounts.map((a: any) =>
       apiRequest('/api/imap/sync', {
         method: 'POST',

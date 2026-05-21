@@ -3,6 +3,7 @@ from flask_cors import CORS
 from config import Config
 from services.gmail_service import GmailService
 from services.supa_auth import SupabaseService
+from services.outlook_service import OutlookService
 import os
 import logging 
 from services.gmail_push import GmailPushService
@@ -45,6 +46,14 @@ imap_service = ImapService()
 supabase_service = SupabaseService(
     Config.supabase_url,
     Config.supabase_key
+)
+
+# init OUTLOOK
+outlook_service = OutlookService(
+    Config.microsoft_client_id,
+    Config.microsoft_client_secret,
+    Config.microsoft_redirect_uri,
+    getattr(Config, 'microsoft_tenant_id', 'common') or 'common',
 )
 
 
@@ -707,6 +716,156 @@ def gmail_webhook():
     except Exception as e:
         print(f'Webhook error: {e}', flush=True)
         return 'ERROR', 500
+
+
+# ── OUTLOOK OAUTH CALLBACK ───────────────────────────────────────────────
+@app.route('/api/outlook/oauth/callback', methods=['POST'])
+def outlook_oauth_callback():
+    """Exchange OAuth code for tokens and save email_account row."""
+    try:
+        data    = request.json
+        code    = data['code']
+        user_id = data['user_id']
+
+        tokens = outlook_service.exchange_code_for_tokens(code)
+
+        existing = supabase_service.client.table('email_accounts')\
+            .select('id')\
+            .eq('user_id', user_id)\
+            .execute()
+        is_first = len(existing.data) == 0
+
+        account_data = {
+            'user_id':       user_id,
+            'email_address': tokens['email'],
+            'provider':      'outlook',
+            'access_token':  tokens['access_token'],
+            'refresh_token': tokens['refresh_token'],
+            'token_expiry':  tokens['token_expiry'],
+            'is_primary':    is_first,
+            'is_connected':  True,
+        }
+
+        result = supabase_service.client.table('email_accounts')\
+            .upsert(account_data, on_conflict='user_id,email_address')\
+            .execute()
+
+        account_id = result.data[0]['id']
+
+        # Backfill in background
+        threading.Thread(
+            target=_run_outlook_backfill,
+            args=(user_id, result.data[0]),
+            daemon=True,
+        ).start()
+
+        return jsonify({
+            'success':    True,
+            'email':      tokens['email'],
+            'account_id': account_id,
+        })
+
+    except Exception as e:
+        print(f'Outlook OAuth error: {e}', flush=True)
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
+def _run_outlook_backfill(user_id: str, account: dict):
+    """Fetch last 100 inbox emails for a newly connected Outlook account."""
+    try:
+        result = outlook_service.fetch_emails_full(
+            access_token=account['access_token'],
+            refresh_token=account['refresh_token'],
+            max_results=100,
+        )
+        emails_to_save = []
+        for email_data in result['emails']:
+            email_data['user_id']    = user_id
+            email_data['account_id'] = account['id']
+            emails_to_save.append(email_data)
+
+        if emails_to_save:
+            supabase_service.save_emails_batch(emails_to_save)
+
+        supabase_service.client.table('email_accounts')\
+            .update({'backfill_complete': True})\
+            .eq('id', account['id'])\
+            .execute()
+
+        print(f"Outlook backfill complete for {account['email_address']}", flush=True)
+    except Exception as e:
+        print(f"Outlook backfill error: {e}", flush=True)
+
+
+# ── OUTLOOK SYNC ─────────────────────────────────────────────────────────-
+@app.route('/api/outlook/sync', methods=['POST'])
+def sync_outlook():
+    """Delta sync for Outlook accounts."""
+    try:
+        data    = request.json
+        user_id = data['user_id']
+        account_id = data.get('account_id')
+
+        all_accounts = supabase_service.get_user_email_accounts(user_id)
+        accounts = [a for a in all_accounts if a.get('provider') == 'outlook']
+        if account_id:
+            accounts = [a for a in accounts if a['id'] == account_id]
+
+        total_saved = 0
+
+        for account in accounts:
+            delta_link = account.get('last_history_id')  # reuse column for delta link
+
+            result = outlook_service.fetch_emails_delta(
+                access_token=account['access_token'],
+                delta_link=delta_link,
+            )
+
+            emails_to_save = []
+            for email_data in result['emails']:
+                email_data['user_id']    = user_id
+                email_data['account_id'] = account['id']
+                emails_to_save.append(email_data)
+
+            if emails_to_save:
+                saved = supabase_service.save_emails_batch(emails_to_save)
+                total_saved += len(saved) if saved else 0
+
+            if result.get('delta_link'):
+                supabase_service.update_account_history_id(
+                    account['id'],
+                    result['delta_link'],
+                    email_address=account['email_address'],
+                )
+
+        return jsonify({'success': True, 'synced': total_saved})
+
+    except Exception as e:
+        print(f'Outlook sync error: {e}', flush=True)
+        return jsonify({'error': str(e)}), 500
+
+
+
+# ── OUTLOOK SEND ─────────────────────────────────────────────────────────-
+@app.route('/api/outlook/send', methods=['POST'])
+def send_outlook_email():
+    """Send an email via Microsoft Graph."""
+    try:
+        data       = request.json
+        account_id = data.get('account_id')
+        account    = supabase_service.get_email_account(account_id)
+
+        result = outlook_service.send_email(
+            access_token=account['access_token'],
+            to=data['to'],
+            subject=data['subject'],
+            body=data['body'],
+        )
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 
 # summarisation endpoint

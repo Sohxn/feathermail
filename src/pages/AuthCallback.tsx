@@ -22,37 +22,44 @@ export default function AuthCallback() {
   }, []);
   
   const handleCallback = async () => {
-    const code = searchParams.get('code');
+    const code  = searchParams.get('code');
     const error = searchParams.get('error');
-    
-    // User denied access
+    const state = searchParams.get('state'); // Microsoft sometimes sends state
+
     if (error) {
-      toast.error('Gmail connection cancelled');
+      toast.error('Account connection cancelled');
       navigate('/dashboard');
       return;
     }
-    
-    // No code provided
+
     if (!code) {
       toast.error('Invalid OAuth callback');
       navigate('/dashboard');
       return;
     }
-    
+
     try {
-      // Exchange code for tokens and save account
-      await api.connectGmailAccount(code);
-      
-      // Reload accounts
+      // Detect which provider by checking which redirect URI was used.
+      // Microsoft Graph sends the callback to the same endpoint.
+      // We distinguish by checking if this is an Outlook auth via a flag in localStorage.
+      const isOutlook = localStorage.getItem('outlook_auth') === 'true';
+      localStorage.removeItem('outlook_auth');
+
+      if (isOutlook) {
+        await api.connectOutlookAccount(code);
+      } else {
+        await api.connectGmailAccount(code);
+      }
+
       const accounts = await api.fetchEmailAccounts();
       setAccounts(accounts);
-      
-      toast.success('Gmail account connected!');
+
+      toast.success('Account connected!');
       navigate('/dashboard');
-      
+
     } catch (error: any) {
       console.error('OAuth callback error:', error);
-      toast.error('Failed to connect Gmail account');
+      toast.error('Failed to connect account');
       navigate('/dashboard');
     }
   };
