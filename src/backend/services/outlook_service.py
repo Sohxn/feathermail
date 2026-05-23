@@ -185,6 +185,7 @@ class OutlookService:
             body_text = re.sub(r'\s+', ' ', body_text).strip()
 
         is_starred = msg.get('flag', {}).get('flagStatus') == 'flagged'
+        #hard reset code #remove this comment later
 
         return {
             'gmail_id':    msg['id'],
