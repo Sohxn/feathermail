@@ -56,6 +56,8 @@ outlook_service = OutlookService(
     getattr(Config, 'microsoft_tenant_id', 'common') or 'common',
 )
 
+OUTLOOK_SUBSCRIPTION_TTL_MINUTES = int(os.getenv('OUTLOOK_SUBSCRIPTION_TTL_MINUTES', '4200'))
+
 
 
 
@@ -200,8 +202,8 @@ def gmail_oauth_callback():
 # ── SYNC ──────────────────────────────────────────────────────────────────
 def run_initial_gmail_backfill(user_id: str, account: dict):
     """Backfill newly connected Gmail accounts in chunks."""
+    account_id = account.get('id')
     try:
-        account_id    = account['id']
         email_address = account['email_address']
         access_token  = account['access_token']
         refresh_token = account['refresh_token']
@@ -286,13 +288,17 @@ def run_initial_gmail_backfill(user_id: str, account: dict):
             flush=True,
         )
 
-        supabase_service.client.table('email_accounts')\
-            .update({'backfill_complete': True})\
-            .eq('id', account_id)\
-            .execute()
-
     except Exception as e:
         print(f"Backfill error for {account.get('email_address', 'unknown')}: {e}", flush=True)
+    finally:
+        if account_id:
+            try:
+                supabase_service.client.table('email_accounts')\
+                    .update({'backfill_complete': True})\
+                    .eq('id', account_id)\
+                    .execute()
+            except Exception as e:
+                print(f"Failed to mark Gmail backfill complete for {account.get('email_address', 'unknown')}: {e}", flush=True)
 
 
 # 1. GOOGLE 
@@ -453,7 +459,7 @@ def connect_imap():
             'user_id':       user_id,
             'email_address': email,
             'provider':      provider,
-            'password':      password,
+            'password_encrypted': password,
             'imap_host':     imap_host,
             'imap_port':     imap_port,
             'smtp_host':     smtp_host,
@@ -513,7 +519,7 @@ def sync_imap():
                 host     = account['imap_host'],
                 port     = account['imap_port'],
                 username = email_address,
-                password = account['password'],
+                password = account.get('password_encrypted') or account.get('password'),
                 max_results = 50,
             )
  
@@ -784,6 +790,18 @@ def _run_outlook_backfill(user_id: str, account: dict):
         if emails_to_save:
             supabase_service.save_emails_batch(emails_to_save)
 
+        baseline = outlook_service.fetch_emails_delta(
+            access_token=account['access_token'],
+            delta_link=None,
+            max_results=1,
+        )
+        if baseline.get('delta_link'):
+            supabase_service.update_account_history_id(
+                account['id'],
+                baseline['delta_link'],
+                email_address=account['email_address'],
+            )
+
         supabase_service.client.table('email_accounts')\
             .update({'backfill_complete': True})\
             .eq('id', account['id'])\
@@ -792,6 +810,14 @@ def _run_outlook_backfill(user_id: str, account: dict):
         print(f"Outlook backfill complete for {account['email_address']}", flush=True)
     except Exception as e:
         print(f"Outlook backfill error: {e}", flush=True)
+    finally:
+        try:
+            supabase_service.client.table('email_accounts')\
+                .update({'backfill_complete': True})\
+                .eq('id', account['id'])\
+                .execute()
+        except Exception as e:
+            print(f"Failed to mark Outlook backfill complete for {account.get('email_address', 'unknown')}: {e}", flush=True)
 
 
 # ── OUTLOOK SYNC ─────────────────────────────────────────────────────────-
