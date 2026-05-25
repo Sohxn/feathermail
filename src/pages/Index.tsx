@@ -53,6 +53,7 @@ export default function Index() {
   }, []);
 
   const accounts          = useEmailStore(state => state.accounts);
+  const hasMore           = useEmailStore(state => state.hasMore);
   const allEmails         = useEmailStore(state => state.emails);
   const selectedEmailId   = useEmailStore(state => state.selectedEmailId);
   const selectedAccountId = useEmailStore(state => state.selectedAccountId);
@@ -96,22 +97,23 @@ export default function Index() {
 
     // useEffect
     useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
+      const sentinel = sentinelRef.current;
+      // Only observe when we actually have more to load
+      if (!sentinel || !hasMore) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        // When the sentinel becomes visible, load next page
-        if (entries[0].isIntersecting) {
-          loadMore();
-        }
-      },
-      { threshold: 0.1 } // fire when 10% of sentinel is visible
-    );
+      const observer = new IntersectionObserver(
+        (entries) => {
+          // When the sentinel becomes visible, load next page
+          if (entries[0].isIntersecting) {
+            loadMore();
+          }
+        },
+        { threshold: 0.1 } // fire when 10% of sentinel is visible
+      );
 
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [loadMore]);
+      observer.observe(sentinel);
+      return () => observer.disconnect();
+    }, [loadMore, hasMore]);
 
 
 
@@ -274,11 +276,11 @@ export default function Index() {
                 />
               ))}
 
-              {/* Sentinel — invisible div that triggers load more */}
-              <div ref={sentinelRef} className="h-4 w-full" />
+              {/* Sentinel — invisible div that triggers load more (only when more pages exist) */}
+              {hasMore && <div ref={sentinelRef} className="h-4 w-full" />}
 
               {/* Show a small spinner while loading next page */}
-              {isSyncing && (
+              {isSyncing && hasMore && (
                 <div className="flex justify-center py-4">
                   <div className="w-5 h-5 border-2 border-foreground/20 border-t-foreground rounded-full animate-spin" />
                 </div>
