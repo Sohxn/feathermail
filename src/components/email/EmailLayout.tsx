@@ -9,12 +9,20 @@ import { Email } from "@/types/email";
 import { toast } from "sonner";
 import { sortByUrgency, useTimeTick } from "@/hooks/useTimeAwareness";
 
+const LIQUID_WALLPAPERS = [
+  "url('/wallpaper/liquid_wall_1.jpg')",
+  "url('/wallpaper/liquid_wall_2.jpg')",
+  "url('/wallpaper/liquid_wall_3.jpg')",
+];
+const DEFAULT_WALLPAPER = LIQUID_WALLPAPERS[0];
+
 // Get saved wallpaper from localStorage
 function getSavedWallpaper(): string {
   if (typeof window !== "undefined") {
-    return localStorage.getItem("wallpaper") || "";
+    const saved = localStorage.getItem("wallpaper") || "";
+    return LIQUID_WALLPAPERS.includes(saved) ? saved : DEFAULT_WALLPAPER;
   }
-  return "";
+  return DEFAULT_WALLPAPER;
 }
 
 export default function EmailLayout() {
@@ -27,8 +35,10 @@ export default function EmailLayout() {
 
   // Save wallpaper to localStorage when it changes
   const handleWallpaperChange = (newWallpaper: string) => {
-    setWallpaper(newWallpaper);
-    localStorage.setItem("wallpaper", newWallpaper);
+    const nextWallpaper = LIQUID_WALLPAPERS.includes(newWallpaper) ? newWallpaper : DEFAULT_WALLPAPER;
+    setWallpaper(nextWallpaper);
+    localStorage.setItem("wallpaper", nextWallpaper);
+    document.documentElement.style.setProperty("--app-background", nextWallpaper);
   };
 
   // Tick every minute to keep time displays fresh

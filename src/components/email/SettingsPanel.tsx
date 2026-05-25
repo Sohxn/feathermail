@@ -2,15 +2,11 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { THEME_OPTIONS, useTheme } from "@/components/theme/ThemeProvider";
 
-// Simple wallpaper options - you can customize these
-const wallpapers = [
-  { id: "none", name: "None", value: "" },
-  { id: "gradient-1", name: "Sunset", value: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" },
-  { id: "gradient-2", name: "Ocean", value: "linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%)" },
-  { id: "gradient-3", name: "Forest", value: "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)" },
-  { id: "gradient-4", name: "Peach", value: "linear-gradient(135deg, #ee9ca7 0%, #ffdde1 100%)" },
-  { id: "gradient-5", name: "Night", value: "linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)" },
-  { id: "gradient-6", name: "Minimal", value: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)" },
+// Liquid theme specific wallpapers (three options)
+const liquidWallpapers = [
+  { id: 'liquid_wall_1', name: 'liquid_wall_1', value: "url('/wallpaper/liquid_wall_1.jpg')" },
+  { id: 'liquid_wall_2', name: 'liquid_wall_2', value: "url('/wallpaper/liquid_wall_2.jpg')" },
+  { id: 'liquid_wall_3', name: 'liquid_wall_3', value: "url('/wallpaper/liquid_wall_3.jpg')" },
 ];
 
 interface SettingsPanelProps {
@@ -65,24 +61,28 @@ export function SettingsPanel({ isOpen, onClose, currentWallpaper, onWallpaperCh
             })}
           </div>
 
-          <h3 className="text-sm font-medium mb-3">Wallpaper</h3>
-          <div className="grid grid-cols-3 gap-2">
-            {wallpapers.map((wp) => (
-              <button
-                key={wp.id}
-                onClick={() => onWallpaperChange(wp.value)}
-                className={`h-16 rounded-md border-2 transition-all ${
-                  currentWallpaper === wp.value
-                    ? "border-foreground"
-                    : "border-border hover:border-muted-foreground"
-                }`}
-                style={{
-                  background: wp.value || "var(--background)",
-                }}
-                title={wp.name}
-              />
-            ))}
-          </div>
+          {/* Liquid theme submenu */}
+          {theme === 'liquid' && (
+            <>
+              <h4 className="text-sm font-medium mt-4 mb-2">Liquid Wallpapers</h4>
+              <div className="grid grid-cols-3 gap-2">
+                {liquidWallpapers.map((wp) => (
+                  <button
+                    key={wp.id}
+                    onClick={() => onWallpaperChange(wp.value)}
+                    className={`h-16 rounded-md border-2 transition-all ${
+                      currentWallpaper === wp.value
+                        ? "border-foreground"
+                        : "border-border hover:border-muted-foreground"
+                    }`}
+                    style={{ background: wp.value }}
+                    title={wp.name}
+                  />
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">Three liquid wallpapers for the liquid theme</p>
+            </>
+          )}
           <p className="text-xs text-muted-foreground mt-3">
             Click a swatch to change the background
           </p>

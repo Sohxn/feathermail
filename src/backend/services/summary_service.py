@@ -4,10 +4,8 @@ import os
 import re
 import threading
 from datetime import datetime, timezone
-
 import httpx
 import json
-
 from config import Config
 from services.supa_auth import SupabaseService
 
@@ -19,6 +17,12 @@ supabase_service = SupabaseService(
 )
 
 #HELPER FUNCTIONS
+def md2json(mdtext:str) -> dict:
+    pattern = r'```json\s*(\{.*?\})\s*'
+    match = re.search(pattern, text, re.DOTALL)
+    if not match:
+        raise ValueError("No Valid JSON found")
+    return json.loads(match.group(1))
 
 #remove unnecessary expressions from email body text (HTML tags, URLs, extra whitespace)
 def trim_email_body(raw: str) -> str:
@@ -133,6 +137,8 @@ def call_bitnet_server(email_body: str):
 
     # Print the raw model response to the backend terminal exactly as returned.
     print(response.text, flush=True)
+
+
 
     # Return raw response text for downstream processing by user
     return response.text

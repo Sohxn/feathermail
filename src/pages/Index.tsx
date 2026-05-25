@@ -13,11 +13,19 @@ import { RefreshCw, Menu, ArrowLeft, PenSquare } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { isDev } from "@/lib/devMode";
 
+const LIQUID_WALLPAPERS = [
+  "url('/wallpaper/liquid_wall_1.jpg')",
+  "url('/wallpaper/liquid_wall_2.jpg')",
+  "url('/wallpaper/liquid_wall_3.jpg')",
+];
+const DEFAULT_WALLPAPER = LIQUID_WALLPAPERS[0];
+
 function getSavedWallpaper(): string {
   if (typeof window !== "undefined") {
-    return localStorage.getItem("wallpaper") || "";
+    const saved = localStorage.getItem("wallpaper") || "";
+    return LIQUID_WALLPAPERS.includes(saved) ? saved : DEFAULT_WALLPAPER;
   }
-  return "";
+  return DEFAULT_WALLPAPER;
 }
 
 type MobilePanel = "sidebar" | "list" | "email";
@@ -48,8 +56,10 @@ export default function Index() {
   }, []);
 
   const handleWallpaperChange = useCallback((newWallpaper: string) => {
-    setWallpaper(newWallpaper);
-    localStorage.setItem("wallpaper", newWallpaper);
+    const nextWallpaper = LIQUID_WALLPAPERS.includes(newWallpaper) ? newWallpaper : DEFAULT_WALLPAPER;
+    setWallpaper(nextWallpaper);
+    localStorage.setItem("wallpaper", nextWallpaper);
+    document.documentElement.style.setProperty("--app-background", nextWallpaper);
   }, []);
 
   const accounts          = useEmailStore(state => state.accounts);

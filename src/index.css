@@ -105,7 +105,7 @@
    
        --background: #07090d;
        --foreground: #ffffff;
-       --app-background: url('/wallpaper/liquid_wallpaper_1.jpg');
+      --app-background: url('/wallpaper/liquid_wall_1.jpg');
        --lg-blur: blur(8px);
        --lg-saturate: saturate(120%);
        --lg-brightness: brightness(1.05);

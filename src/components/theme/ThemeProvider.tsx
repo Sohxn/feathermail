@@ -29,6 +29,15 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 const STORAGE_KEY = "feathermail-theme";
+const WALLPAPER_KEY = 'wallpaper';
+
+// The three allowed liquid wallpaper CSS values (must match SettingsPanel)
+const LIQUID_WALLPAPERS = [
+  "url('/wallpaper/liquid_wall_1.jpg')",
+  "url('/wallpaper/liquid_wall_2.jpg')",
+  "url('/wallpaper/liquid_wall_3.jpg')",
+];
+const DEFAULT_LIQUID_WALLPAPER = LIQUID_WALLPAPERS[0];
 
 function getSavedTheme(): ThemeName {
   if (typeof window === "undefined") return "liquid";
@@ -39,6 +48,12 @@ function getSavedTheme(): ThemeName {
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<ThemeName>(getSavedTheme);
 
+  const getSavedWallpaper = useCallback(() => {
+    if (typeof window === 'undefined') return DEFAULT_LIQUID_WALLPAPER;
+    const savedWallpaper = localStorage.getItem(WALLPAPER_KEY) || '';
+    return LIQUID_WALLPAPERS.includes(savedWallpaper) ? savedWallpaper : DEFAULT_LIQUID_WALLPAPER;
+  }, []);
+
   const setTheme = useCallback((nextTheme: ThemeName) => {
     setThemeState(nextTheme);
     localStorage.setItem(STORAGE_KEY, nextTheme);
@@ -46,7 +61,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useLayoutEffect(() => {
     document.documentElement.dataset.theme = theme;
-  }, [theme]);
+    if (typeof window !== 'undefined') {
+      try {
+        if (theme === 'liquid') {
+          const wallpaper = getSavedWallpaper();
+          localStorage.setItem(WALLPAPER_KEY, wallpaper);
+          document.documentElement.style.setProperty('--app-background', wallpaper);
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+  }, [theme, getSavedWallpaper]);
 
   const value = useMemo(() => ({ theme, setTheme }), [theme, setTheme]);
 
