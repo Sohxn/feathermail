@@ -8,8 +8,7 @@
 @tailwind utilities;
 
 @layer base {
-  :root,
-  html[data-theme="midnight"] {
+  :root {
     color-scheme: dark;
 
     /* Core palette: black background, pastel accents, no hard surfaces */
@@ -93,156 +92,26 @@
 
     --lg-border:       rgba(255,255,255,0.04);
     --lg-border-hover: rgba(173, 255, 221, 0.10);
-
-    --lg-inset:
-      inset 0   1px 0  rgba(255,255,255,0.10),
-      inset 0  -1px 0  rgba(255,255,255,0.03),
-      inset 1px  0  0  rgba(255,255,255,0.06),
-      inset -1px 0  0  rgba(0,0,0,0.10),
-      0 0 0 0.5px rgba(255,255,255,0.08);
-
-    --lg-inset-hover:
-      inset 0   1px 0  rgba(255,255,255,0.14),
-      inset 0  -1px 0  rgba(255,255,255,0.05),
-      inset 1px  0  0  rgba(255,255,255,0.08),
-      inset -1px 0  0  rgba(0,0,0,0.08),
-      0 0 0 0.5px rgba(173, 255, 221, 0.14);
-
-    --lg-shadow-sm:
-      0 10px 28px rgba(0,0,0,0.26),
-      0 1px 2px rgba(0,0,0,0.20),
-      0 0 0 0.5px rgba(255,255,255,0.06);
-    --lg-shadow-md:
-      0 14px 36px rgba(0,0,0,0.32),
-      0 2px 6px rgba(0,0,0,0.18),
-      0 0 0 0.5px rgba(173, 255, 221, 0.10);
-    --lg-shadow-lg:
-      0 22px 48px rgba(0,0,0,0.38),
-      0 4px 10px rgba(0,0,0,0.20),
-      0 0 0 0.5px rgba(173, 255, 221, 0.14);
-
-    --lg-glare: radial-gradient(
-      ellipse 70% 40% at 40% -10%,
-      rgba(173, 255, 221, 0.16) 0%,
-      rgba(255,255,255,0.04) 48%,
-      transparent 68%
-    );
-
     --lg-transition:
       background   150ms ease,
       box-shadow   150ms ease,
       border-color 150ms ease,
       transform    100ms ease;
+    --lg-refraction: 1;
   }
 
-  html[data-theme="aurora"] {
-    --background:            #05060a;
-    --foreground:            #f4f8ff;
-    --secondary:             rgba(255,255,255,0.07);
-    --muted:                 rgba(255,255,255,0.06);
-    --accent:                rgba(120, 220, 255, 0.14);
-    --border:                rgba(255,255,255,0.12);
-    --ring:                  rgba(120, 220, 255, 0.30);
-    --email-selected:        rgba(120, 220, 255, 0.12);
-    --sidebar-primary:       #c8f5ff;
-    --sidebar-ring:          rgba(120, 220, 255, 0.30);
-    --app-background:
-      radial-gradient(circle at 18% 12%, rgba(120, 220, 255, 0.16) 0%, transparent 30%),
-      radial-gradient(circle at 82% 18%, rgba(255, 171, 214, 0.12) 0%, transparent 30%),
-      radial-gradient(circle at 50% 100%, rgba(168, 255, 224, 0.08) 0%, transparent 34%),
-      linear-gradient(180deg, #04050a 0%, #090d16 55%, #05060a 100%);
-    --lg-blur: blur(18px);
-    --lg-saturate: saturate(150%);
-    --lg-brightness: brightness(1.10);
-      --lg-brightness: brightness(1.25);
-      --lg-brightness: brightness(1.10);
-      --lg-brightness: brightness(1.10);
-    --lg-bg: rgba(10, 14, 20, 0.72);
-    --lg-bg-hover: rgba(16, 20, 28, 0.80);
-    --lg-bg-active: rgba(22, 28, 38, 0.88);
-    --lg-bg-dark: rgba(4, 7, 11, 0.82);
-    --lg-border-hover: rgba(120, 220, 255, 0.16);
-    --lg-inset-hover:
-      inset 0   1px 0  rgba(255,255,255,0.16),
-      inset 0  -1px 0  rgba(255,255,255,0.05),
-      inset 1px  0  0  rgba(255,255,255,0.10),
-      inset -1px 0  0  rgba(0,0,0,0.08),
-      0 0 0 0.5px rgba(120, 220, 255, 0.18);
-  }
-
+  /* liquid theme template: fill these tokens to customize the liquid theme */
   html[data-theme="liquid"] {
-    --background:            #07090d;
-    --foreground:            #ffffff;
-    --secondary:             rgba(255,255,255,0.10);
-    --muted:                 rgba(255,255,255,0.08);
-    --accent:                rgba(255,255,255,0.10);
-    --border:                rgba(255,255,255,0.12);
-    --ring:                  rgba(255,255,255,0.30);
-    --email-selected:        rgba(255,255,255,0.12);
-    --app-background:
-      url('/liquid_wallpaper_1.jpg'),
-      /* subtle magenta tint from top-left to bottom */
-      linear-gradient(135deg, rgba(255, 0, 128, 0.12) 0%, rgba(255, 0, 128, 0.04) 100%),
-      radial-gradient(circle at 18% 12%, rgba(120, 150, 255, 0.12) 0%, transparent 30%),
-      radial-gradient(circle at 82% 18%, rgba(255, 165, 200, 0.12) 0%, transparent 30%),
-      linear-gradient(180deg, #050608 0%, #090b10 54%, #050608 100%);
-    --lg-blur: blur(18px);
-    --lg-saturate: saturate(150%);
-    --lg-brightness: brightness(1.18);
-    --lg-bg: rgba(255,255,255,0.06);
-    --lg-bg-hover: rgba(255,255,255,0.10);
-    --lg-bg-active: rgba(255,255,255,0.15);
-    --lg-bg-dark: rgba(0,0,0,0.35);
-    --lg-border: rgba(255,255,255,0.0);
-    --lg-border-hover: rgba(255,255,255,0.0);
-    --lg-inset:
-      inset 0   1px 0  rgba(255,255,255,0.55),
-      inset 0  -1px 0  rgba(255,255,255,0.04),
-      inset 1px  0  0  rgba(255,255,255,0.22),
-      inset -1px 0  0  rgba(0,0,0,0.08),
-      0 0 0 0.5px rgba(255,255,255,0.18);
-    --lg-inset-hover:
-      inset 0   1px 0  rgba(255,255,255,0.70),
-      inset 0  -1px 0  rgba(255,255,255,0.06),
-      inset 1px  0  0  rgba(255,255,255,0.30),
-      inset -1px 0  0  rgba(0,0,0,0.06),
-      0 0 0 0.5px rgba(255,255,255,0.28);
-    --lg-glare: radial-gradient(
-      ellipse 70% 40% at 40% -10%,
-      rgba(255,255,255,0.28) 0%,
-      rgba(255,255,255,0.05) 45%,
-      transparent 65%
-    );
+   
+       --background: #07090d;
+       --foreground: #ffffff;
+       --app-background: url('/wallpaper/liquid_wallpaper_1.jpg');
+       --lg-blur: blur(8px);
+       --lg-saturate: saturate(120%);
+       --lg-brightness: brightness(1.05);
+  
   }
-
-  html[data-theme="graphite"] {
-    --background:            #040405;
-    --foreground:            #eef1f5;
-    --secondary:             rgba(255,255,255,0.05);
-    --muted:                 rgba(255,255,255,0.04);
-    --accent:                rgba(190, 206, 255, 0.10);
-    --border:                rgba(255,255,255,0.08);
-    --ring:                  rgba(190, 206, 255, 0.18);
-    --email-selected:        rgba(190, 206, 255, 0.08);
-    --app-background:
-      radial-gradient(circle at 18% 12%, rgba(190, 206, 255, 0.08) 0%, transparent 28%),
-      linear-gradient(180deg, #040405 0%, #09090b 58%, #040405 100%);
-    --lg-blur: blur(8px);
-    --lg-saturate: saturate(115%);
-    --lg-brightness: brightness(1.02);
-    --lg-bg: rgba(10, 10, 12, 0.92);
-    --lg-bg-hover: rgba(18, 18, 20, 0.96);
-    --lg-bg-active: rgba(24, 24, 28, 1);
-    --lg-border: rgba(255,255,255,0.06);
-    --lg-border-hover: rgba(190, 206, 255, 0.08);
-    --lg-inset:
-      inset 0   1px 0  rgba(255,255,255,0.06),
-      inset 0  -1px 0  rgba(255,255,255,0.03),
-      0 0 0 0.5px rgba(255,255,255,0.06);
-    --lg-shadow-sm:
-      0 6px 18px rgba(0,0,0,0.34),
-      0 0 0 0.5px rgba(255,255,255,0.05);
-  }
+  /* aurora and other detailed liquid definitions removed — keep the minimal template above */
 }
 
 /* Neo: solid, non-transparent theme (no liquid glass) */
@@ -363,6 +232,8 @@ html[data-theme="neo"] {
     contain: layout style;
   }
 
+
+
   /* Edge rim highlight */
   .glass::before {
     content: '';
@@ -389,6 +260,43 @@ html[data-theme="neo"] {
     pointer-events: none;
     z-index: 2;
   }
+
+/* Theme-specific overrides: place after generic pseudo-elements so they win */
+html[data-theme="liquid"] .glass {
+  /* clearer, more transparent glass (not frosted) */
+  background: rgba(255,255,255,0.02);
+  backdrop-filter: blur(8px) saturate(calc(110% * var(--lg-refraction))) brightness(1.02);
+  -webkit-backdrop-filter: blur(8px) saturate(calc(110% * var(--lg-refraction))) brightness(1.02);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    inset 0 -1px 0 rgba(0,0,0,0.12),
+    0 6px 18px rgba(0,0,0,0.16);
+}
+
+html[data-theme="liquid"] .glass::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(ellipse 60% 30% at 22% 14%, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.08) 22%, transparent 46%);
+  filter: blur(4px);
+  opacity: 0.65;
+  mix-blend-mode: screen;
+}
+
+html[data-theme="liquid"] .glass::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  z-index: 2;
+  pointer-events: none;
+  background: radial-gradient(ellipse 90% 48% at 50% 110%, rgba(0,0,0,0.26) 0%, transparent 68%);
+  filter: blur(3px);
+  opacity: 0.6;
+}
 
   /* Content always above pseudo-elements */
   .glass > * { position: relative; z-index: 3; }
@@ -423,20 +331,21 @@ html[data-theme="neo"] {
     isolation: isolate;
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.08);
+    /* Refractive puddle-like surface: layered soft highlights and shadows */
     background:
-      radial-gradient(120% 95% at 18% 10%, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.10) 18%, transparent 36%),
-      radial-gradient(110% 80% at 82% 0%, rgba(127, 175, 255, 0.20) 0%, transparent 34%),
-      radial-gradient(85% 75% at 50% 125%, rgba(0, 0, 0, 0.30) 0%, transparent 55%),
-      linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.06) 34%, rgba(255, 255, 255, 0.14) 66%, rgba(255, 255, 255, 0.05) 100%);
-    backdrop-filter: blur(28px) saturate(185%) brightness(1.18);
-    -webkit-backdrop-filter: blur(28px) saturate(185%) brightness(1.18);
+      radial-gradient(60% 50% at 12% 18%, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.06) 22%, transparent 46%),
+      radial-gradient(70% 60% at 88% 6%, rgba(200, 230, 255,0.18) 0%, transparent 36%),
+      radial-gradient(90% 80% at 50% 120%, rgba(0,0,0,0.32) 0%, transparent 55%),
+      linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+    background-repeat: no-repeat;
+    backdrop-filter: blur(30px) saturate(calc(150% * var(--lg-refraction))) brightness(1.22);
+    -webkit-backdrop-filter: blur(30px) saturate(calc(150% * var(--lg-refraction))) brightness(1.22);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.62),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.08),
-      inset 14px 0 30px rgba(255, 255, 255, 0.12),
-      inset -18px 0 42px rgba(0, 0, 0, 0.20),
-      0 18px 50px rgba(0, 0, 0, 0.38),
-      0 0 0 0.5px rgba(255, 255, 255, 0.14);
+      inset 0 1px 0 rgba(255,255,255,0.6),
+      inset 0 -1px 0 rgba(255,255,255,0.06),
+      inset 8px 0 28px rgba(255,255,255,0.08),
+      inset -12px 0 34px rgba(0,0,0,0.22),
+      0 12px 36px rgba(0,0,0,0.28);
     color: var(--card-foreground);
     transition: var(--lg-transition);
     will-change: transform;
@@ -447,16 +356,16 @@ html[data-theme="neo"] {
   .glass-liquid::before {
     content: '';
     position: absolute;
-    inset: -1px;
+    inset: -2px;
     border-radius: inherit;
     z-index: 1;
     pointer-events: none;
+    /* soft specular band + subtle chromatic hint */
     background:
-      radial-gradient(ellipse 58% 34% at 25% 16%, rgba(255, 255, 255, 0.52) 0%, rgba(255, 255, 255, 0.18) 22%, transparent 56%),
-      radial-gradient(ellipse 62% 40% at 78% 0%, rgba(170, 202, 255, 0.30) 0%, transparent 48%),
-      radial-gradient(ellipse 90% 70% at 50% 50%, transparent 62%, rgba(255, 255, 255, 0.14) 82%, rgba(255, 255, 255, 0.28) 100%);
-    filter: url(#lg-distort);
-    opacity: 0.95;
+      radial-gradient(ellipse 60% 40% at 22% 14%, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.18) 24%, transparent 50%),
+      radial-gradient(ellipse 64% 44% at 78% 2%, rgba(170,200,255,0.28) 0%, transparent 40%);
+    filter: blur(6px);
+    opacity: 0.9;
     mix-blend-mode: screen;
   }
 
@@ -467,12 +376,13 @@ html[data-theme="neo"] {
     border-radius: inherit;
     z-index: 2;
     pointer-events: none;
+    /* subtle surface sheen and a soft shadow vignette for depth */
     background:
-      linear-gradient(155deg, rgba(255, 255, 255, 0.46) 0%, rgba(255, 255, 255, 0.18) 10%, transparent 28%),
-      linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.16) 16%, transparent 34% 62%, rgba(255, 255, 255, 0.08) 78%, transparent 92%),
-      radial-gradient(ellipse 80% 42% at 50% 104%, rgba(0, 0, 0, 0.28) 0%, transparent 66%);
-    filter: url(#lg-distort-edge);
-    opacity: 0.88;
+      linear-gradient(155deg, rgba(255,255,255,0.34) 0%, rgba(255,255,255,0.14) 10%, transparent 28%),
+      linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.12) 16%, transparent 34% 62%, rgba(255,255,255,0.06) 78%, transparent 92%),
+      radial-gradient(ellipse 90% 48% at 50% 110%, rgba(0,0,0,0.32) 0%, transparent 68%);
+    filter: blur(4px);
+    opacity: 0.85;
   }
 
   .glass-liquid > * {
