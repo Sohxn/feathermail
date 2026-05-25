@@ -732,12 +732,29 @@ def outlook_oauth_callback():
 
         account_id = result.data[0]['id']
 
-        # Backfill in background
+        # Backfill in background — this is what populates the inbox
         threading.Thread(
             target=_run_outlook_backfill,
             args=(user_id, result.data[0]),
             daemon=True,
         ).start()
+
+        # Subscription is best-effort only — never block the OAuth response
+        # It requires a public HTTPS URL so it won't work in local dev
+        try:
+            raw_root = request.url_root.rstrip('/')
+            # Force HTTPS — Microsoft Graph rejects plain HTTP notification URLs
+            webhook_url = raw_root.replace('http://', 'https://') + '/api/outlook/webhook'
+            outlook_service.create_inbox_subscription(
+                access_token=tokens['access_token'],
+                notification_url=webhook_url,
+                client_state=account_id,
+                ttl_minutes=OUTLOOK_SUBSCRIPTION_TTL_MINUTES,
+            )
+            print(f"Outlook subscription created for {tokens['email']}", flush=True)
+        except Exception as sub_err:
+            # Subscription failure is expected in local dev — delta sync covers this
+            print(f"Outlook subscription skipped (not critical): {sub_err}", flush=True)
 
         return jsonify({
             'success':    True,
