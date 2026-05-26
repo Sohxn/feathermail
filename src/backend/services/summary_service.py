@@ -163,16 +163,16 @@ def call_bitnet_server(email_body: str):
     response.raise_for_status()
 
     # Print the raw model response to the backend terminal exactly as returned.
-    # print(response.text, flush=True)
+    print(response.text, flush=True)
 
     # converting the string to json -> dict
-    structured_summary = md2json(response.text)
+    # structured_summary = md2json(response.text)
 
-    print(structured_summary, flush=True)
-    print(type(structured_summary), flush=True)
+    # print(structured_summary, flush=True)
+    # print(type(structured_summary), flush=True)
 
     # Return raw response text for downstream processing by user
-    return structured_summary
+    return response.text
 
 
 
