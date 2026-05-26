@@ -10,21 +10,12 @@ from config import Config
 from services.supa_auth import SupabaseService
 
 
-# initialising supabase object
 supabase_service = SupabaseService(
     Config.supabase_url,
     Config.supabase_key
 )
 
-#HELPER FUNCTIONS
-def md2json(mdtext:str) -> dict:
-    pattern = r'```json\s*(\{.*?\})\s*'
-    match = re.search(pattern, mdtext, re.DOTALL)
-    if not match:
-        raise ValueError("No Valid JSON found")
-    return json.loads(match.group(1))
 
-#remove unnecessary expressions from email body text (HTML tags, URLs, extra whitespace)
 def trim_email_body(raw: str) -> str:
     text = re.sub(r'<[^>]+>', ' ', raw)
     text = re.sub(r'https?://\S+', ' ', text)
@@ -33,35 +24,57 @@ def trim_email_body(raw: str) -> str:
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
-#SHA256 
+
 def generate_content_hash(mail_body: str) -> str:
     return hashlib.sha256(mail_body.encode('utf-8')).hexdigest()
 
 
-#generate summary key
 def generate_job_key(sender_email_id, model_name, prompt_version, content_hash):
-    job_key_string = f"{sender_email_id}+|+{model_name}+|+{prompt_version}+|+{content_hash}"
-    return job_key_string
+    return f"{sender_email_id}+|+{model_name}+|+{prompt_version}+|+{content_hash}"
 
 
-#check durable cache 
+def extract_json_from_response(raw: str) -> str:
+    """
+    Robustly extract a JSON object from model output regardless of
+    whether it is wrapped in markdown fences or preceded/followed
+    by conversational text.
+    Returns the raw JSON string, or a safe fallback on complete failure.
+    """
+    # 1. Try to find a JSON object directly in the string
+    #    Match the first { ... } block, allowing nested braces
+    brace_match = re.search(r'\{.*\}', raw, re.DOTALL)
+    if brace_match:
+        candidate = brace_match.group(0).strip()
+        try:
+            json.loads(candidate)   # validate
+            return candidate
+        except json.JSONDecodeError:
+            pass
+
+    # 2. Strip markdown code fences and retry
+    stripped = re.sub(r'```(?:json)?', '', raw).strip().strip('`').strip()
+    brace_match2 = re.search(r'\{.*\}', stripped, re.DOTALL)
+    if brace_match2:
+        candidate2 = brace_match2.group(0).strip()
+        try:
+            json.loads(candidate2)
+            return candidate2
+        except json.JSONDecodeError:
+            pass
+
+    # 3. Model went fully conversational — return a safe empty structure
+    print(f"[summary] could not extract JSON from response, using fallback. raw={raw[:200]}", flush=True)
+    return json.dumps({"summary": "", "money": "", "time": "", "actions": []})
+
+
 def cache_check(sender_email_id, model_name, mail_body, prompt_version):
     content_hash = generate_content_hash(mail_body)
-    #check cache
     cache_record = supabase_service.search_durable_cache(sender_email_id, model_name, content_hash)
-    
-    #case: cache hit (if list is not empty)
     if cache_record:
-        #fetch summary from cache 
-        cached_summary = cache_record[0]['summary_text']
-        return cached_summary
+        return cache_record[0]['summary_text']
+    return None
 
-    #case: cache miss (list is empty)
-    else:
-        return None
 
-    
-#fetch or generate summary
 def fetch_or_generate_summary(job_key: str, email_body: str, sender_email_id: str, model_name: str, content_hash: str, prompt_version: str, user_id: str | None = None):
     if not supabase_service.try_claim_work(job_key):
         return {"status": "processing", "job_key": job_key}
@@ -78,16 +91,8 @@ def fetch_or_generate_summary(job_key: str, email_body: str, sender_email_id: st
 def run_summary_worker(job_key: str, email_body: str, sender_email_id: str, model_name: str, content_hash: str, prompt_version: str, user_id: str | None = None):
     logger = logging.getLogger(__name__)
     try:
-        #for downstream processing
-        result = call_bitnet_server(email_body)
-        if isinstance(result, str):
-            summary_text = result
-        else:
-            #If model client returned structured data, store its raw JSON string
-            try:
-                summary_text = json.dumps(result, ensure_ascii=False)
-            except Exception:
-                summary_text = str(result)
+        raw_result = call_bitnet_server(email_body)
+        summary_text = extract_json_from_response(raw_result)
         supabase_service.insert_summary(
             job_key,
             sender_email_id,
@@ -104,51 +109,45 @@ def run_summary_worker(job_key: str, email_body: str, sender_email_id: str, mode
 
 
 def call_bitnet_server(email_body: str):
-    # Allow overriding the model server URL via env var for tunneling (ngrok) or remote deploys
     base_url = os.getenv("BITNET_SERVER_URL", "http://127.0.0.1:8080")
     path = "/v1/chat/completions"
     timeout = int(os.getenv("SUMMARY_MODEL_TIMEOUT_SECONDS", "45"))
 
     system_prompt = (
-        'You are an email summarisation and extraction engine. Return exactly one minified valid JSON object '
-        'with exactly 4 keys in this order: "summary","money","time","actions". Do not output any text '
-        'before or after the JSON. Do not output markdown, code fences, labels, explanations, or newline characters. '
-        'Replace any line breaks with spaces. JSON KEY RULES- "summary" must be a short plain-text string. '
-        '"money" must be one extracted monetary/deal value like "$240" or "". "time" must be one extracted '
-        'schedule/deadline value like "3PM, THURSDAY" or "". "actions" must be an array of semantically dry, '
-        'response-oriented suggestions describing what the recipient should do next, each action short, neutral, '
-        'imperative, no narrative, no emotion, no duplication, no copied full email sentences, and [] if no clear '
-        'next step exists. DONOT INVENT FACTS. If uncertain, use empty values.'
+        'You are a JSON-only extraction engine. '
+        'You MUST respond with exactly one raw JSON object and nothing else. '
+        'No markdown, no code fences, no explanation, no greeting. '
+        'Output starts with { and ends with }.'
+    )
+
+    # Injecting the full instruction into the user turn makes small/quantized
+    # models follow it far more reliably than relying on the system prompt alone.
+    user_message = (
+        'Extract information from the email below and return ONLY a minified JSON object '
+        'with exactly these 4 keys: "summary", "money", "time", "actions".\n'
+        'Rules:\n'
+        '- "summary": one short plain-text sentence describing the email.\n'
+        '- "money": one monetary value like "$240" or "" if none.\n'
+        '- "time": one deadline/schedule like "3PM Thursday" or "" if none.\n'
+        '- "actions": array of short imperative next steps, or [] if none.\n'
+        'Do NOT invent facts. Output ONLY the JSON, starting with { and ending with }.\n\n'
+        f'EMAIL:\n{email_body}'
     )
 
     payload = {
         "messages": [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": email_body},
+            {"role": "user",   "content": user_message},
         ],
-        "temperature": 0.1,
-        "max_tokens": 150,
+        "temperature": 0.0,
+        "max_tokens": 200,
         "stream": False,
-        "stop": ["}\n", "} "]
+        # Stop on the closing brace of the top-level object
+        "stop": ["}\n", "}\n\n", "} \n"],
     }
 
     response = httpx.post(f"{base_url}{path}", json=payload, timeout=timeout)
     response.raise_for_status()
 
-    # Print the raw model response to the backend terminal exactly as returned.
     print(response.text, flush=True)
-
-    # converting the string to json -> dict
-    # structured_summary = md2json(response.text)
-
-    # print(structured_summary, flush=True)
-    # print(type(structured_summary), flush=True)
-
-    # Return raw response text for downstream processing by user
     return response.text
-
-
-
-
-
-
