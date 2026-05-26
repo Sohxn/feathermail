@@ -16,6 +16,16 @@ supabase_service = SupabaseService(
 )
 
 
+#helper functions
+def md2json(mdtext:str) -> dict:
+    pattern = r'```json\s*(\{.*?\})\s*'
+    match = re.search(pattern, mdtext, re.DOTALL)
+    if not match:
+        raise ValueError("No JSON found")
+    return json.loads(match.group(1))
+
+
+
 def trim_email_body(raw: str) -> str:
     text = re.sub(r'<[^>]+>', ' ', raw)
     text = re.sub(r'https?://\S+', ' ', text)
@@ -149,5 +159,11 @@ def call_bitnet_server(email_body: str):
     response = httpx.post(f"{base_url}{path}", json=payload, timeout=timeout)
     response.raise_for_status()
 
-    print(response.text, flush=True)
+    #log instantly 
+    print(f"response.text: {response.text}", flush=True)
+    print(f"type => {type(response.text)}", flush=True)
+
+    print(f"response: {response}", flush=True)
+    print(f"type => {type(response)}", flush=True)
+    
     return response.text
