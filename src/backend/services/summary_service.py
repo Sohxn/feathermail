@@ -19,7 +19,7 @@ supabase_service = SupabaseService(
 #HELPER FUNCTIONS
 def md2json(mdtext:str) -> dict:
     pattern = r'```json\s*(\{.*?\})\s*'
-    match = re.search(pattern, text, re.DOTALL)
+    match = re.search(pattern, mdtext, re.DOTALL)
     if not match:
         raise ValueError("No Valid JSON found")
     return json.loads(match.group(1))
@@ -110,38 +110,69 @@ def call_bitnet_server(email_body: str):
     timeout = int(os.getenv("SUMMARY_MODEL_TIMEOUT_SECONDS", "45"))
 
     system_prompt = (
-        'You are an email summarisation and extraction engine. Return exactly one minified valid JSON object '
-        'with exactly 4 keys in this order: "summary","money","time","actions". Do not output any text '
-        'before or after the JSON. Do not output markdown, code fences, labels, explanations, or newline characters. '
-        'Replace any line breaks with spaces. JSON KEY RULES- "summary" must be a short plain-text string. '
-        '"money" must be one extracted monetary/deal value like "$240" or "". "time" must be one extracted '
-        'schedule/deadline value like "3PM, THURSDAY" or "". "actions" must be an array of semantically dry, '
-        'response-oriented suggestions describing what the recipient should do next, each action short, neutral, '
-        'imperative, no narrative, no emotion, no duplication, no copied full email sentences, and [] if no clear '
-        'next step exists. DONOT INVENT FACTS. If uncertain, use empty values.'
+        'You are an email summarisation and extraction engine. You must respond only by calling the function '
+        'extract_summary. Never write assistant text, markdown, code fences, labels, or explanations. '
+        'Only extract facts present in the email. If a field is not present, use an empty string or an empty array.'
     )
+
+    summary_function = {
+        "name": "extract_summary",
+        "description": "Return a compact email summary with monetary value, time reference, and next actions.",
+        "parameters": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "summary": {
+                    "type": "string",
+                    "description": "Short plain-text summary of the email."
+                },
+                "money": {
+                    "type": "string",
+                    "description": "One extracted monetary or deal value, or an empty string."
+                },
+                "time": {
+                    "type": "string",
+                    "description": "One extracted schedule or deadline value, or an empty string."
+                },
+                "actions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Short, dry, response-oriented next-step suggestions."
+                }
+            },
+            "required": ["summary", "money", "time", "actions"]
+        }
+    }
 
     payload = {
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": email_body},
         ],
-        "temperature": 0.1,
-        "max_tokens": 150,
+        "temperature": 0,
+        "top_p": 1,
+        "max_tokens": 200,
         "stream": False,
-        "stop": ["}\n", "} "]
+        "functions": [summary_function],
+        "function_call": {"name": "extract_summary"}
     }
 
     response = httpx.post(f"{base_url}{path}", json=payload, timeout=timeout)
     response.raise_for_status()
 
     # Print the raw model response to the backend terminal exactly as returned.
-    print(response.text, flush=True)
+    # print(response.text, flush=True)
 
+    # converting the string to json -> dict
+    structured_summary = md2json(response.text)
 
+    print(structured_summary, flush=True)
+    print(type(structured_summary), flush=True)
 
     # Return raw response text for downstream processing by user
-    return response.text
+    return structured_summary
 
 
 
