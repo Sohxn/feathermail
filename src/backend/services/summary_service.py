@@ -123,37 +123,55 @@ def call_bitnet_server(email_body: str):
     path = "/v1/chat/completions"
     timeout = int(os.getenv("SUMMARY_MODEL_TIMEOUT_SECONDS", "45"))
 
-    system_prompt = (
-        'You are a JSON-only extraction engine. '
-        'You MUST respond with exactly one raw JSON object and nothing else. '
-        'No markdown, no code fences, no explanation, no greeting. '
-        'Output starts with { and ends with }.'
-    )
+    #V1
+    # system_prompt = (
+    #     'You are a JSON-only extraction engine. '
+    #     'You MUST respond with exactly one raw JSON object and nothing else. '
+    #     'No markdown, no code fences, no explanation, no greeting. '
+    #     'Output starts with { and ends with }.'
+    # )
 
-    # Injecting the full instruction into the user turn makes small/quantized
-    # models follow it far more reliably than relying on the system prompt alone.
-    user_message = (
-        'Extract information from the email below and return ONLY a minified JSON object '
-        'with exactly these 4 keys: "summary", "money", "time", "actions".\n'
-        'Rules:\n'
-        '- "summary": one short plain-text sentence describing the email.\n'
-        '- "money": one monetary value like "$240" or "" if none.\n'
-        '- "time": one deadline/schedule like "3PM Thursday" or "" if none.\n'
-        '- "actions": array of short imperative next steps, or [] if none.\n'
-        'Do NOT invent facts. Output ONLY the JSON, starting with { and ending with }.\n\n'
-        f'EMAIL:\n{email_body}'
+    # # Injecting the full instruction into the user turn makes small/quantized
+    # # models follow it far more reliably than relying on the system prompt alone.
+    # user_message = (
+    #     'Extract information from the email below and return ONLY a minified JSON object '
+    #     'with exactly these 4 keys: "summary", "money", "time", "actions".\n'
+    #     'Rules:\n'
+    #     '- "summary": one short plain-text sentence describing the email.\n'
+    #     '- "money": one monetary value like "$240" or "" if none.\n'
+    #     '- "time": one deadline/schedule like "3PM Thursday" or "" if none.\n'
+    #     '- "actions": array of short imperative next steps, or [] if none.\n'
+    #     'Do NOT invent facts. Output ONLY the JSON, starting with { and ending with }.\n\n'
+    #     f'EMAIL:\n{email_body}'
+    # )
+
+    # payload = {
+    #     "messages": [
+    #         {"role": "system", "content": system_prompt},
+    #         {"role": "user",   "content": user_message},
+    #     ],
+    #     "temperature": 0.0,
+    #     "max_tokens": 200,
+    #     "stream": False,
+    #     # Stop on the closing brace of the top-level object
+    #     "stop": ["}\n", "}\n\n", "} \n"],
+    # }
+
+    #V2
+    prompt = (
+        'Return exactly one JSON object with this schema: '
+        '{"summary":"string","money":"string","time":"string","actions":["string"]}. '
+        'Rules: summary = one short sentence; money = one money value or ""; '
+        'time = one deadline/time or ""; actions = array of imperative next steps or []. '
+        'Do not add markdown. Do not add explanation. Do not add any text before or after JSON.\n'
+        f'EMAIL to summarise:[\n{email_body}]'
     )
 
     payload = {
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user",   "content": user_message},
-        ],
-        "temperature": 0.0,
-        "max_tokens": 200,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0,
+        "max_tokens": 160,
         "stream": False,
-        # Stop on the closing brace of the top-level object
-        "stop": ["}\n", "}\n\n", "} \n"],
     }
 
     response = httpx.post(f"{base_url}{path}", json=payload, timeout=timeout)
