@@ -44,14 +44,7 @@ def generate_job_key(sender_email_id, model_name, prompt_version, content_hash):
 
 
 def extract_json_from_response(raw: str) -> str:
-    """
-    Robustly extract a JSON object from model output regardless of
-    whether it is wrapped in markdown fences or preceded/followed
-    by conversational text.
-    Returns the raw JSON string, or a safe fallback on complete failure.
-    """
-    # 1. Try to find a JSON object directly in the string
-    #    Match the first { ... } block, allowing nested braces
+ 
     brace_match = re.search(r'\{.*\}', raw, re.DOTALL)
     if brace_match:
         candidate = brace_match.group(0).strip()
@@ -121,7 +114,7 @@ def run_summary_worker(job_key: str, email_body: str, sender_email_id: str, mode
 def call_bitnet_server(email_body: str) -> str:
     base_url = os.getenv("BITNET_SERVER_URL", "http://127.0.0.1:8080")
     path = "/v1/chat/completions"
-    timeout = int(os.getenv("SUMMARY_MODEL_TIMEOUT_SECONDS", "45"))
+    timeout_seconds = float(os.getenv("SUMMARY_MODEL_TIMEOUT_SECONDS", "180"))
 
     summary_schema = {
         "type": "object",
@@ -159,8 +152,16 @@ def call_bitnet_server(email_body: str) -> str:
         }
     }
 
-    response = httpx.post(f"{base_url}{path}", json=payload, timeout=timeout)
-    response.raise_for_status()
+    timeout = httpx.Timeout(timeout_seconds, connect=10.0)
+
+    try:
+        response = httpx.post(f"{base_url}{path}", json=payload, timeout=timeout)
+        response.raise_for_status()
+    except httpx.ReadTimeout as exc:
+        raise TimeoutError(
+            f"summary model request timed out after {timeout_seconds:.0f}s; "
+            f"increase SUMMARY_MODEL_TIMEOUT_SECONDS if the Azure container needs more time"
+        ) from exc
 
     outer = response.json()
     content = outer["choices"][0]["message"]["content"]
