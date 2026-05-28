@@ -1,6 +1,7 @@
 import { Email, EmailAccount } from "@/types/email";
 
 export const DEV_EMAIL_PAGE_SIZE = 4;
+export const DEV_EMAIL_ROTATION_INTERVAL_MS = 15000;
 
 export const devEmailAccounts: EmailAccount[] = [
   {
@@ -366,6 +367,76 @@ const devEmails: Email[] = [
 const orderedDevEmails = [...devEmails].sort(
   (left, right) => new Date(right.received_at).getTime() - new Date(left.received_at).getTime(),
 );
+
+let devRotationCounter = 0;
+
+function buildRotatingDevEmail(previousEmail: Email): Email {
+  devRotationCounter += 1;
+  const now = new Date();
+  const tick = String(devRotationCounter).padStart(3, "0");
+  const variant = devRotationCounter % 5;
+
+  const subjects = [
+    "Re: Updated design notes",
+    "New invoice draft arrived",
+    "Follow-up on the dev inbox flow",
+    "Shipping checklist for the next build",
+    "Testing a simulated incoming message",
+  ];
+
+  const senders = [
+    { from_email: "alex@startup.io", from_name: "Alex Chen" },
+    { from_email: "billing@stripe.com", from_name: "Stripe Billing" },
+    { from_email: "sarah.miller@enterprise.com", from_name: "Sarah Miller" },
+    { from_email: "mom@family.com", from_name: "Mom" },
+    { from_email: "security@github.com", from_name: "GitHub Security" },
+  ];
+
+  const bodies = [
+    "This is a simulated incoming email for local development. The message rotates every 15 seconds so the inbox feels alive.",
+    "The dev inbox has been refreshed with another fake message so you can test unread counts and selection changes.",
+    "Dummy mode is active. This mail replaces the oldest visible one to mimic a constantly updating inbox.",
+    "A new local-only email just arrived. Use it to test summaries, lists, and quick navigation.",
+    "Fresh simulated mail is flowing into the inbox so the UI can be tested without authentication.",
+  ];
+
+  const sender = senders[variant];
+
+  return {
+    id: `dev-live-${tick}`,
+    user_id: previousEmail.user_id,
+    account_id: previousEmail.account_id,
+    gmail_id: `dev-live-gmail-${tick}`,
+    thread_id: `thread-live-${tick}`,
+    subject: subjects[variant],
+    from_email: sender.from_email,
+    from_name: sender.from_name,
+    to_email: previousEmail.to_email,
+    body_text: bodies[devRotationCounter % bodies.length],
+    body_html: null,
+    snippet: "Simulated local dev mail for testing the rotating inbox.",
+    received_at: now.toISOString(),
+    labels: ["INBOX"],
+    is_read: false,
+    is_starred: false,
+    is_archived: false,
+    is_trashed: false,
+    created_at: now.toISOString(),
+    cc_email: [],
+    bcc_email: [],
+    reply_to: sender.from_email,
+    sent_at: null,
+  };
+}
+
+export function rotateDevEmails(currentEmails: Email[]): Email[] {
+  if (currentEmails.length === 0) {
+    return [];
+  }
+
+  const freshEmail = buildRotatingDevEmail(currentEmails[0]);
+  return [freshEmail, ...currentEmails.slice(0, currentEmails.length - 1)];
+}
 
 export function getDevEmailsPage(cursor: string | null, limit = DEV_EMAIL_PAGE_SIZE): Email[] {
   const startIndex = cursor

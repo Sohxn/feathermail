@@ -4,12 +4,12 @@
  * Syncs with backend
  */
 
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useEmailStore } from '@/store/emailStore';
 import * as api from '@/services/apiClient';
 import { toast } from 'sonner';
 import { isDev } from '@/lib/devMode';
-import { devEmailAccounts, getDevEmailsPage, hasMoreDevEmails, DEV_EMAIL_PAGE_SIZE } from '@/data/devEmails';
+import { devEmailAccounts, getDevEmailsPage, hasMoreDevEmails, DEV_EMAIL_PAGE_SIZE, DEV_EMAIL_ROTATION_INTERVAL_MS, rotateDevEmails } from '@/data/devEmails';
 import { fetchEmailsPage } from '@/services/apiClient';
 
 const PRODUCTION_PAGE_SIZE = 15;
@@ -22,13 +22,38 @@ export function useEmailData() {
     store.setAccounts(devEmailAccounts);
 
     const firstPage = getDevEmailsPage(null, DEV_EMAIL_PAGE_SIZE);
-    store.appendEmails(firstPage);
-    store.setHasMore(hasMoreDevEmails(null, DEV_EMAIL_PAGE_SIZE));
+    store.setEmails(firstPage);
+    store.setHasMore(false);
 
     if (firstPage.length > 0) {
       store.setSelectedEmailId(firstPage[0].id);
     }
   };
+
+  useEffect(() => {
+    if (!isDev || store.emails.length === 0) {
+      return;
+    }
+
+    const rotationTimer = window.setInterval(() => {
+      const currentEmails = useEmailStore.getState().emails;
+      const nextEmails = rotateDevEmails(currentEmails);
+
+      if (nextEmails.length === 0) {
+        return;
+      }
+
+      const currentSelectedId = useEmailStore.getState().selectedEmailId;
+      useEmailStore.getState().setEmails(nextEmails);
+
+      const selectedStillExists = nextEmails.some((email) => email.id === currentSelectedId);
+      if (!selectedStillExists) {
+        useEmailStore.getState().setSelectedEmailId(nextEmails[0].id);
+      }
+    }, DEV_EMAIL_ROTATION_INTERVAL_MS);
+
+    return () => window.clearInterval(rotationTimer);
+  }, [store.emails.length]);
 
   const loadData = async () => {
     store.setLoading(true);
@@ -77,9 +102,6 @@ export function useEmailData() {
       store.setSyncing(true);
 
       if (isDev) {
-        const emails = getDevEmailsPage(store.cursor, DEV_EMAIL_PAGE_SIZE);
-        store.appendEmails(emails);
-        store.setHasMore(hasMoreDevEmails(store.cursor, DEV_EMAIL_PAGE_SIZE));
         return;
       }
 
