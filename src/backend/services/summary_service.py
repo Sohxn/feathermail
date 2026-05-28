@@ -2,6 +2,7 @@ import hashlib
 import logging
 import os
 import re
+import random
 import threading
 from datetime import datetime, timezone
 import httpx
@@ -110,8 +111,47 @@ def run_summary_worker(job_key: str, email_body: str, sender_email_id: str, mode
     finally:
         supabase_service.delete_in_flight_job(job_key)
 
+#to be removed in prodcution [DUMMY MODE]
+def get_summary_mode() -> str:
+    return os.getenv("SUMMARY_MODE", "real").strip().lower()
+
+
+def build_dummy_summary_content(email_body: str) -> str:
+    seed = int(hashlib.sha256(email_body.encode("utf-8")).hexdigest()[:8], 16)
+    rng = random.Random(seed)
+    now = datetime.now(timezone.utc)
+
+    summaries = [
+        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, with a short note about next steps and follow-up context.",
+        "Forwarded message discussing future animation ideas, layout adjustments, and a few practical follow-up actions.",
+        "A brief placeholder summary covering planning notes, visible labels, and a reminder to keep the important items clear.",
+        "Dummy mode summary for testing the pipeline, including lightweight planning language and staged action items.",
+    ]
+
+    action_pool = [
+        "Review the attached notes and confirm the next milestone.",
+        "Keep the labels visible and avoid overlapping text.",
+        "Convert the draft into a cleaner vector-ready version.",
+        "Follow up with the team on the next implementation pass.",
+        "Replace placeholder content with the final production copy.",
+    ]
+
+    summary_payload = {
+        "summary": rng.choice(summaries),
+        "money": "",
+        "time": f"{now:%a, %b} {now.day}, {now.year}, {now:%H:%M}",
+        "actions": rng.sample(action_pool, k=3),
+    }
+
+    return json.dumps(summary_payload)
+
 
 def call_bitnet_server(email_body: str) -> str:
+    if get_summary_mode() == "dummy":
+        content = build_dummy_summary_content(email_body)
+        print(f"content: {content}", flush=True)
+        return content
+
     base_url = os.getenv("BITNET_SERVER_URL", "http://127.0.0.1:8080")
     path = "/v1/chat/completions"
     timeout_seconds = float(os.getenv("SUMMARY_MODEL_TIMEOUT_SECONDS", "180"))
