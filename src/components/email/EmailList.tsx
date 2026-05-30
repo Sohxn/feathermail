@@ -38,7 +38,7 @@ export function EmailList({
   };
 
   return (
-    <div className="w-96 flex flex-col bg-transparent">
+    <div className="w-96 flex flex-col">
       {/* Search */}
       <div className="h-14 flex items-center px-4">
         <div className="relative w-full">

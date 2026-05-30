@@ -14,7 +14,7 @@ export default function ComingSoon() {
             <div className="w-8 h-8 bg-foreground rounded-md flex items-center justify-center">
               <Mail className="w-5 h-5 text-background" />
             </div>
-            <h1 className="text-xl font-bold " style={{ fontFamily: "'Magnolia Script', cursive" }}>Feathermail</h1>
+            <h1 className="text-xl font-bold " style={{ fontFamily: "var(--font-family-brand)" }}>Feathermail</h1>
           </div>
           
           {/* Privacy Policy Link - Required by Google */}

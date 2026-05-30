@@ -6,6 +6,7 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import DOMPurify from "dompurify";
 import { toast } from "sonner";
 import { ComposeInitData } from "./ComposeModal";
+import { useTheme } from "@/components/theme/ThemeProvider";
 
 interface EmailViewProps {
   email: {
@@ -95,9 +96,9 @@ function IframeEmailBody({ html, onDarkDetected }: { html: string; onDarkDetecte
             html, body {
               margin: 0;
               padding: 0;
-              /* Let email's own font / color win; fall back to system stack */
-              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-                           Helvetica, Arial, sans-serif;
+              /* Let email's own font / color win; fall back to the app font variable */
+              font-family: var(--font-family-base, "Roboto", sans-serif);
+              font-weight: var(--font-weight-base, 400);
               font-size: 14px;
               line-height: 1.5;
               color: #1a1a1a;
@@ -261,6 +262,8 @@ function PlainTextBody({ text }: { text: string }) {
 // ─────────────────────────────────────────────────────────────
 
 export default function EmailView({ email, onReply }: EmailViewProps) {
+  const { theme } = useTheme();
+  const isNeo = theme === "neo";
   const markAsRead   = useEmailStore((state) => state.markEmailAsRead);
   const toggleStar   = useEmailStore((state) => state.toggleEmailStar);
   const archiveEmail = useEmailStore((state) => state.archiveEmail);
@@ -392,12 +395,14 @@ export default function EmailView({ email, onReply }: EmailViewProps) {
         className="glass-black rounded-2xl shadow-xl p-4 md:p-6 overflow-x-hidden transition-colors duration-300"
         style={{
           background:
-            emailWantsDarkBg === true
+            isNeo
+              ? "#111111"
+              : emailWantsDarkBg === true
               ? "rgba(10,10,10,0.92)"
               : emailWantsDarkBg === false
               ? "rgba(255,255,255,0.95)"
               : undefined,
-          backdropFilter: emailWantsDarkBg === null ? undefined : "blur(18px)",
+          backdropFilter: isNeo || emailWantsDarkBg === null ? undefined : "blur(18px)",
         }}
       >
         {email.body_html ? (

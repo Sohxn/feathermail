@@ -13,21 +13,6 @@ import { RefreshCw, Menu, ArrowLeft, PenSquare } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { isDev } from "@/lib/devMode";
 
-const LIQUID_WALLPAPERS = [
-  "url('/wallpaper/liquid_wall_1.jpg')",
-  "url('/wallpaper/liquid_wall_2.jpg')",
-  "url('/wallpaper/liquid_wall_3.jpg')",
-];
-const DEFAULT_WALLPAPER = LIQUID_WALLPAPERS[0];
-
-function getSavedWallpaper(): string {
-  if (typeof window !== "undefined") {
-    const saved = localStorage.getItem("wallpaper") || "";
-    return LIQUID_WALLPAPERS.includes(saved) ? saved : DEFAULT_WALLPAPER;
-  }
-  return DEFAULT_WALLPAPER;
-}
-
 type MobilePanel = "sidebar" | "list" | "email";
 
 export default function Index() {
@@ -43,7 +28,6 @@ export default function Index() {
   const [isComposeOpen, setIsComposeOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [composeData, setComposeData] = useState<ComposeInitData | undefined>();
-  const [wallpaper, setWallpaper] = useState(getSavedWallpaper);
 
   const openCompose = useCallback((initialData?: ComposeInitData) => {
     setComposeData(initialData);
@@ -53,13 +37,6 @@ export default function Index() {
   const closeCompose = useCallback(() => {
     setIsComposeOpen(false);
     setTimeout(() => setComposeData(undefined), 300);
-  }, []);
-
-  const handleWallpaperChange = useCallback((newWallpaper: string) => {
-    const nextWallpaper = LIQUID_WALLPAPERS.includes(newWallpaper) ? newWallpaper : DEFAULT_WALLPAPER;
-    setWallpaper(nextWallpaper);
-    localStorage.setItem("wallpaper", nextWallpaper);
-    document.documentElement.style.setProperty("--app-background", nextWallpaper);
   }, []);
 
   const accounts          = useEmailStore(state => state.accounts);
@@ -357,8 +334,6 @@ export default function Index() {
       <SettingsPanel
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        currentWallpaper={wallpaper}
-        onWallpaperChange={handleWallpaperChange}
       />
     </div>
   );

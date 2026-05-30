@@ -16,7 +16,7 @@ export default function Landing() {
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
         <div>
           <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground"></p>
-          <h1 className="text-xl font-bold" style={{ fontFamily: "'Magnolia Script', cursive" }}>Feathermail</h1>
+          <h1 className="text-xl font-bold" style={{ fontFamily: "var(--font-family-brand)" }}>Feathermail</h1>
         </div>
         <div className="flex gap-3">
           <button

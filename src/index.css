@@ -1,13 +1,17 @@
-@import "@fontsource/roboto-mono/400.css";
-@import "@fontsource/roboto-mono/500.css";
-@import "@fontsource/roboto-mono/600.css";
-@import "@fontsource/roboto-mono/700.css";
-
+@import "@fontsource/karla/600.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  /* Local Magnolia Script for brand headings */
+  @font-face {
+    font-family: 'Magnolia Script';
+    src: url('/assets/Magnolia Script.otf') format('opentype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+  }
   :root {
     color-scheme: dark;
 
@@ -151,7 +155,7 @@ html[data-theme="neo"] {
   --email-hover:           #f3f4f6;
   --email-selected:        #e6eefc;
 
-  /* Disable liquid glass tokens: solid components only */
+    border-radius: var(--lg-radius, var(--radius-2xl, 16px));
   --lg-blur:       blur(0px);
   --lg-saturate:   saturate(100%);
   --lg-brightness: brightness(1);
@@ -182,7 +186,8 @@ html[data-theme="neo"] {
   }
 
   html {
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--font-family-base, "Roboto", sans-serif);
+    font-weight: var(--font-weight-base, 400);
     background: var(--app-background);
     background-repeat: no-repeat;
     background-position: center center;
@@ -193,6 +198,8 @@ html[data-theme="neo"] {
 
   body {
     @apply bg-transparent text-foreground antialiased;
+    font-family: var(--font-family-base, "Roboto", sans-serif);
+    font-weight: var(--font-weight-base, 400);
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
@@ -221,7 +228,7 @@ html[data-theme="neo"] {
     border: none;
     outline: none;
     background: var(--lg-bg);
-    border-radius: var(--lg-radius, 16px);
+    border-radius: var(--lg-radius, var(--radius-2xl, 16px));
     backdrop-filter:      var(--lg-blur) var(--lg-saturate) var(--lg-brightness);
     -webkit-backdrop-filter: var(--lg-blur) var(--lg-saturate) var(--lg-brightness);
     box-shadow: var(--lg-inset), var(--lg-shadow-sm);
@@ -298,6 +305,16 @@ html[data-theme="liquid"] .glass::after {
   opacity: 0.6;
 }
 
+/* Neo: disable glass pseudo-element highlights for flat colored surfaces */
+html[data-theme="neo"] .glass::before,
+html[data-theme="neo"] .glass::after {
+  background: none !important;
+  opacity: 0 !important;
+  box-shadow: none !important;
+  mix-blend-mode: normal !important;
+  pointer-events: none;
+}
+
   /* Content always above pseudo-elements */
   .glass > * { position: relative; z-index: 3; }
 
@@ -312,8 +329,10 @@ html[data-theme="liquid"] .glass::after {
   .glass.rounded-full, .glass-black.rounded-full  { --lg-radius: 9999px;   }
 
   .glass[class*="rounded"],
-  .glass-black[class*="rounded"] {
-    border-radius: var(--lg-radius, 16px) !important;
+  .glass-black[class*="rounded"],
+  .glass-liquid[class*="rounded"],
+  .glass-liquid-apple[class*="rounded"] {
+    border-radius: var(--lg-radius, var(--radius-2xl, 16px)) !important;
   }
 
   .glass:hover {
@@ -400,7 +419,7 @@ html[data-theme="liquid"] .glass::after {
   .glass-liquid.rounded-full  { --lg-radius: 9999px; }
 
   .glass-liquid[class*="rounded"] {
-    border-radius: var(--lg-radius, 16px) !important;
+    border-radius: var(--lg-radius, var(--radius-2xl, 16px)) !important;
   }
 
   .glass-liquid:hover {
@@ -478,7 +497,7 @@ html[data-theme="liquid"] .glass::after {
   }
 
   .glass-liquid-apple[class*="rounded"] {
-    border-radius: var(--lg-radius, 16px) !important;
+    border-radius: var(--lg-radius, var(--radius-2xl, 16px)) !important;
   }
 
   /* ── Dark/black glass variant ── */
@@ -488,7 +507,7 @@ html[data-theme="liquid"] .glass::after {
     overflow: hidden;
     border: none;
     background: var(--lg-bg-dark);
-    border-radius: var(--lg-radius, 16px);
+    border-radius: var(--lg-radius, var(--radius-2xl, 16px));
     backdrop-filter:         var(--lg-blur) var(--lg-saturate) var(--lg-brightness);
     -webkit-backdrop-filter: var(--lg-blur) var(--lg-saturate) var(--lg-brightness);
     box-shadow:
@@ -533,14 +552,21 @@ html[data-theme="liquid"] .glass::after {
   }
 
   .glass-black > * { position: relative; z-index: 3; }
-}
 
-@font-face {
-  font-family: 'Magnolia Script';
-  src: url('/assets/Magnolia Script.otf') format('opentype');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
+  html[data-theme="neo"] .glass-black {
+    background: var(--card);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.03),
+      inset 0 -1px 0 rgba(0,0,0,0.45),
+      0 14px 34px rgba(0,0,0,0.45);
+    border: 1px solid var(--border);
+    color: var(--foreground);
+  }
+
+  html[data-theme="neo"] .glass-black::before,
+  html[data-theme="neo"] .glass-black::after {
+    background: none;
+  }
 }
 
 /*

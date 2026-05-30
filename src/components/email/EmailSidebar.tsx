@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from "@/components/theme/ThemeProvider";
 import {
   Inbox, Star, Send, FileText, Archive, Trash2,
   PenSquare, ExternalLink, Settings, Mail, ChevronRight, X,
@@ -44,15 +45,20 @@ export default function EmailSidebar({
   folderCounts, accounts, selectedAccountId, onAccountChange, onClose,
 }: EmailSidebarProps) {
   const navigate = useNavigate();
+  const { theme } = useTheme();
+  const isNeo = theme === "neo";
 
   return (
-    <aside className="w-full md:w-56 flex flex-col bg-transparent h-full">
+    <aside className={cn(
+      "w-full md:w-56 flex flex-col h-full border backdrop-blur-2xl shadow-[0_24px_80px_rgba(0,0,0,0.42)] overflow-hidden",
+      isNeo ? "border-border bg-background" : "border-border/80 bg-background/82"
+    )}>
 
       {/* Logo row */}
-      <div className="h-14 rounded-2xl m-2 flex items-center justify-between px-4 flex-shrink-0">
+      <div className="h-14 m-2 flex items-center justify-between px-4 flex-shrink-0">
         <span
           className="font-semibold tracking-tight text-[4vh] text-white"
-          style={{ fontFamily: "'Magnolia Script', cursive" }}
+          style={{ fontFamily: "var(--font-family-brand, 'Roboto', sans-serif)", fontWeight: "var(--font-weight-semibold, 600)" }}
         >
           Feathermail
         </span>
@@ -66,15 +72,19 @@ export default function EmailSidebar({
 
       {/* Account Selector */}
       <div className="p-3 flex-shrink-0">
-        <div className="text-xs font-medium text-muted-foreground mb-2 px-1">ACCOUNTS</div>
+        <div className="text-sm font-medium text-muted-foreground mb-2 px-1 ml-1">ACCOUNTS</div>
 
         <button
           onClick={() => onAccountChange(null)}
           className={cn(
             "w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-colors mb-1 glass",
             selectedAccountId === null
-              ? "bg-secondary text-foreground"
-              : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+              ? isNeo
+                ? "border border-border bg-primary text-primary-foreground"
+                : "border border-white/20 bg-white/[0.08] text-foreground"
+              : isNeo
+                ? "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
           )}
         >
           <div className="flex items-center gap-2 min-w-0">
@@ -91,12 +101,17 @@ export default function EmailSidebar({
             className={cn(
               "w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors mb-1",
               selectedAccountId === account.id
-                ? "bg-secondary text-foreground"
+                ? isNeo
+                  ? "border border-border bg-primary text-primary-foreground"
+                  : "border border-white/20 bg-white/[0.08] text-foreground"
                 : "text-muted-foreground"
             )}
           >
             <div className="flex items-center gap-2 min-w-0">
-              <div className="w-4 h-4 rounded-full glass flex items-center justify-center flex-shrink-0 p-2">
+                <div className={cn(
+                  "w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 p-2 shadow-none",
+                  isNeo ? "border-border bg-primary text-primary-foreground" : "border-white/25 bg-transparent"
+                )}>
                 <span className="text-[8px] font-bold">{account.email_address[0].toUpperCase()}</span>
               </div>
               <span className="truncate text-xs">{account.email_address}</span>
@@ -110,7 +125,12 @@ export default function EmailSidebar({
       <div className="p-3 flex-shrink-0">
         <button
           onClick={onCompose}
-          className="w-full flex items-center gap-2 px-3 py-2 text-background rounded-xl text-sm font-medium hover:bg-foreground/90 transition-colors glass"
+          className={cn(
+            "w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors glass",
+            isNeo
+              ? "bg-primary text-primary-foreground hover:bg-accent"
+              : "text-background hover:bg-foreground/90"
+          )}
         >
           <PenSquare className="w-4 h-4" />
           Compose
@@ -118,7 +138,10 @@ export default function EmailSidebar({
       </div>
 
       {/* Folders */}
-      <nav className="flex-1 px-2 py-1 overflow-y-auto">
+      <nav className="flex-1 px-3 py-1 overflow-y-auto">
+
+        <div className="text-sm font-medium text-muted-foreground mb-2 px-1 ml-1">FOLDERS</div>
+
         {folderConfig.map(folder => {
           const Icon = iconMap[folder.icon];
           const isActive = activeFolder === folder.id;
@@ -128,10 +151,14 @@ export default function EmailSidebar({
               key={folder.id}
               onClick={() => onFolderChange(folder.id)}
               className={cn(
-                "w-full flex items-center justify-between px-3 py-2 text-sm transition-colors",
+                "w-full flex items-center justify-between px-3 py-2 text-sm transition-colors rounded-xl mb-1",
                 isActive
-                  ? "glass rounded-xl text-foreground"
-                  : "text-muted-foreground"
+                  ? isNeo
+                    ? "glass border border-border bg-card text-foreground"
+                    : "glass border border-white/12 text-foreground"
+                  : isNeo
+                    ? "text-muted-foreground hover:bg-secondary"
+                    : "text-muted-foreground"
               )}
             >
               <div className="flex items-center gap-2">
@@ -152,14 +179,20 @@ export default function EmailSidebar({
       <div className="px-3 pb-4 space-y-1 flex-shrink-0">
         <button
           onClick={onOpenSettings}
-          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:bg-secondary/50 rounded-md transition-colors"
+          className={cn(
+            "w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors",
+            isNeo ? "text-muted-foreground hover:bg-secondary" : "text-muted-foreground hover:bg-secondary/50"
+          )}
         >
           <Settings className="w-4 h-4" />
           Settings
         </button>
         <button
           onClick={() => navigate("/dashboard")}
-          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:bg-secondary/50 rounded-md transition-colors"
+          className={cn(
+            "w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors",
+            isNeo ? "text-muted-foreground hover:bg-secondary" : "text-muted-foreground hover:bg-secondary/50"
+          )}
         >
           <ExternalLink className="w-4 h-4" />
           Manage Accounts
