@@ -59,6 +59,69 @@ outlook_service = OutlookService(
 OUTLOOK_SUBSCRIPTION_TTL_MINUTES = int(os.getenv('OUTLOOK_SUBSCRIPTION_TTL_MINUTES', '4200'))
 
 
+def _save_outlook_emails(user_id: str, account: dict, emails: list[dict]) -> list[dict]:
+    emails_to_save = []
+    for email_data in emails:
+        email_data['user_id'] = user_id
+        email_data['account_id'] = account['id']
+        emails_to_save.append(email_data)
+
+    if not emails_to_save:
+        return []
+
+    return supabase_service.save_emails_batch(emails_to_save)
+
+
+def _fetch_outlook_delta_or_full(account: dict, force_full: bool = False) -> dict | None:
+    delta_link = None if force_full else account.get('last_history_id')
+
+    if delta_link:
+        result = outlook_service.fetch_emails_delta(
+            access_token=account['access_token'],
+            refresh_token=account.get('refresh_token'),
+            token_expiry=account.get('token_expiry'),
+            delta_link=delta_link,
+        )
+        if result is not None:
+            return result
+
+    return outlook_service.fetch_emails_full(
+        access_token=account['access_token'],
+        refresh_token=account.get('refresh_token'),
+        token_expiry=account.get('token_expiry'),
+        max_results=100,
+    )
+
+
+def _sync_outlook_account(user_id: str, account: dict, force_full: bool = False) -> tuple[int, str | None]:
+    result = _fetch_outlook_delta_or_full(account, force_full=force_full)
+    if not result:
+        return 0, None
+
+    saved_rows = _save_outlook_emails(user_id, account, result.get('emails', []))
+
+    delta_link = result.get('delta_link')
+    if not delta_link:
+        baseline = outlook_service.fetch_emails_delta(
+            access_token=account['access_token'],
+            refresh_token=account.get('refresh_token'),
+            token_expiry=account.get('token_expiry'),
+            delta_link=None,
+            max_results=1,
+        )
+        if baseline and baseline.get('delta_link'):
+            delta_link = baseline['delta_link']
+
+    if delta_link:
+        supabase_service.update_account_history_id(
+            account['id'],
+            delta_link,
+            email_address=account.get('email_address', ''),
+        )
+
+    return len(saved_rows), delta_link
+
+
 
 
 
@@ -704,6 +767,39 @@ def gmail_webhook():
         return 'ERROR', 500
 
 
+@app.route('/api/outlook/webhook', methods=['GET', 'POST'])
+def outlook_webhook():
+    """Microsoft Graph webhook for Outlook inbox changes."""
+    try:
+        validation_token = request.args.get('validationToken')
+        if validation_token:
+            return validation_token, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+
+        payload = request.json or {}
+        notifications = payload.get('value', []) if isinstance(payload, dict) else []
+
+        for notification in notifications:
+            account_id = notification.get('clientState')
+            if not account_id:
+                continue
+
+            account = supabase_service.get_email_account(account_id)
+            if not account:
+                continue
+
+            threading.Thread(
+                target=_sync_outlook_account,
+                args=(account['user_id'], account),
+                daemon=True,
+            ).start()
+
+        return 'OK', 202
+
+    except Exception as e:
+        print(f'Outlook webhook error: {e}', flush=True)
+        return 'ERROR', 500
+
+
 # ── OUTLOOK OAUTH CALLBACK ───────────────────────────────────────────────
 @app.route('/api/outlook/oauth/callback', methods=['POST'])
 def outlook_oauth_callback():
@@ -776,31 +872,7 @@ def outlook_oauth_callback():
 def _run_outlook_backfill(user_id: str, account: dict):
     """Fetch last 100 inbox emails for a newly connected Outlook account."""
     try:
-        result = outlook_service.fetch_emails_full(
-            access_token=account['access_token'],
-            refresh_token=account['refresh_token'],
-            max_results=100,
-        )
-        emails_to_save = []
-        for email_data in result['emails']:
-            email_data['user_id']    = user_id
-            email_data['account_id'] = account['id']
-            emails_to_save.append(email_data)
-
-        if emails_to_save:
-            supabase_service.save_emails_batch(emails_to_save)
-
-        baseline = outlook_service.fetch_emails_delta(
-            access_token=account['access_token'],
-            delta_link=None,
-            max_results=1,
-        )
-        if baseline.get('delta_link'):
-            supabase_service.update_account_history_id(
-                account['id'],
-                baseline['delta_link'],
-                email_address=account['email_address'],
-            )
+        _sync_outlook_account(user_id, account, force_full=True)
 
         supabase_service.client.table('email_accounts')\
             .update({'backfill_complete': True})\
@@ -837,29 +909,8 @@ def sync_outlook():
         total_saved = 0
 
         for account in accounts:
-            delta_link = account.get('last_history_id')
-
-            result = outlook_service.fetch_emails_delta(
-                access_token=account['access_token'],
-                delta_link=delta_link,
-            )
-
-            emails_to_save = []
-            for email_data in result['emails']:
-                email_data['user_id']    = user_id
-                email_data['account_id'] = account['id']
-                emails_to_save.append(email_data)
-
-            if emails_to_save:
-                saved = supabase_service.save_emails_batch(emails_to_save)
-                total_saved += len(saved) if saved else 0
-
-            if result.get('delta_link'):
-                supabase_service.update_account_history_id(
-                    account['id'],
-                    result['delta_link'],
-                    email_address=account['email_address'],
-                )
+            saved_count, _ = _sync_outlook_account(user_id, account)
+            total_saved += saved_count
 
         return jsonify({'success': True, 'synced': total_saved})
 

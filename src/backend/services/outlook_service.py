@@ -1,5 +1,5 @@
 import requests
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 
 GRAPH_BASE = 'https://graph.microsoft.com/v1.0'
@@ -68,6 +68,39 @@ class OutlookService:
             'token_expiry':  expiry,
         }
 
+    def _refresh_if_needed(self, access_token: str, refresh_token: str | None, token_expiry: str | None = None) -> str:
+        if not refresh_token or not token_expiry:
+            return access_token
+
+        try:
+            expiry = datetime.fromisoformat(token_expiry.replace('Z', '+00:00'))
+            if expiry.tzinfo is None:
+                expiry = expiry.replace(tzinfo=timezone.utc)
+
+            if (expiry - datetime.now(timezone.utc)).total_seconds() < 300:
+                refreshed = self.refresh_access_token(refresh_token)
+                return refreshed['access_token']
+        except Exception:
+            refreshed = self.refresh_access_token(refresh_token)
+            return refreshed['access_token']
+
+        return access_token
+
+    def _request_graph(self, method: str, url: str, access_token: str, refresh_token: str | None = None,
+                       token_expiry: str | None = None, **kwargs):
+        token = self._refresh_if_needed(access_token, refresh_token, token_expiry)
+        headers = kwargs.pop('headers', {})
+        headers['Authorization'] = f'Bearer {token}'
+
+        resp = requests.request(method, url, headers=headers, **kwargs)
+        if resp.status_code == 401 and refresh_token:
+            token = self.refresh_access_token(refresh_token)['access_token']
+            headers['Authorization'] = f'Bearer {token}'
+            resp = requests.request(method, url, headers=headers, **kwargs)
+
+        resp.raise_for_status()
+        return resp
+
     # ── GRAPH HELPERS ─────────────────────────────────────────────────────
 
     def _graph_get(self, path: str, access_token: str) -> dict:
@@ -94,7 +127,7 @@ class OutlookService:
     # ── FETCH EMAILS ─────────────────────────────────────────────────────
 
     def fetch_emails_full(self, access_token: str, refresh_token: str,
-                          max_results: int = 50) -> dict:
+                          max_results: int = 50, token_expiry: str | None = None) -> dict:
         """Fetch most recent N emails from inbox."""
         params = {
             '$top':     max_results,
@@ -102,47 +135,97 @@ class OutlookService:
             '$select':  'id,subject,from,toRecipients,ccRecipients,receivedDateTime,'
                         'body,bodyPreview,isRead,flag,parentFolderId',
         }
-        resp = requests.get(
-            f'{GRAPH_BASE}/me/mailFolders/inbox/messages',
-            headers={'Authorization': f'Bearer {access_token}'},
-            params=params,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        emails = [self._parse_message(m) for m in data.get('value', [])]
+        messages = []
+        next_url = f'{GRAPH_BASE}/me/mailFolders/inbox/messages'
+        next_params = params
+
+        while next_url:
+            resp = self._request_graph(
+                'GET',
+                next_url,
+                access_token,
+                refresh_token=refresh_token,
+                token_expiry=token_expiry,
+                params=next_params,
+            )
+            data = resp.json()
+            messages.extend(data.get('value', []))
+            next_url = data.get('@odata.nextLink')
+            next_params = None
+
+        emails = [self._parse_message(m) for m in messages]
         return {'emails': emails, 'is_full_sync': True}
 
     def fetch_emails_delta(self, access_token: str, delta_link: str | None,
-                           max_results: int = 50) -> dict:
+                           max_results: int = 50, refresh_token: str | None = None,
+                           token_expiry: str | None = None) -> dict | None:
         """Fetch messages changed since the last delta link."""
-        if delta_link:
-            resp = requests.get(
-                delta_link,
-                headers={'Authorization': f'Bearer {access_token}'},
-            )
-        else:
-            resp = requests.get(
-                f'{GRAPH_BASE}/me/mailFolders/inbox/messages/delta',
-                headers={'Authorization': f'Bearer {access_token}'},
-                params={
-                    '$top':    max_results,
-                    '$select': 'id,subject,from,toRecipients,ccRecipients,receivedDateTime,'
-                               'body,bodyPreview,isRead,flag,parentFolderId',
-                },
-            )
-        resp.raise_for_status()
-        data = resp.json()
-
-        emails = [self._parse_message(m) for m in data.get('value', [])
-                  if not m.get('@removed')]
-
-        next_delta = data.get('@odata.deltaLink') or data.get('@odata.nextLink')
-
-        return {
-            'emails':     emails,
-            'delta_link': next_delta,
-            'is_full_sync': delta_link is None,
+        request_url = delta_link or f'{GRAPH_BASE}/me/mailFolders/inbox/messages/delta'
+        request_params = None if delta_link else {
+            '$top':    max_results,
+            '$select': 'id,subject,from,toRecipients,ccRecipients,receivedDateTime,'
+                       'body,bodyPreview,isRead,flag,parentFolderId',
         }
+
+        try:
+            emails = []
+            next_url = request_url
+            next_params = request_params
+            delta_cursor = delta_link
+
+            while next_url:
+                resp = self._request_graph(
+                    'GET',
+                    next_url,
+                    access_token,
+                    refresh_token=refresh_token,
+                    token_expiry=token_expiry,
+                    params=next_params,
+                )
+                data = resp.json()
+
+                emails.extend(
+                    self._parse_message(m)
+                    for m in data.get('value', [])
+                    if not m.get('@removed')
+                )
+
+                next_url = data.get('@odata.nextLink')
+                next_params = None
+                if not next_url:
+                    delta_cursor = data.get('@odata.deltaLink') or delta_cursor
+
+            return {
+                'emails': emails,
+                'delta_link': delta_cursor,
+                'is_full_sync': delta_link is None,
+            }
+
+        except requests.HTTPError as error:
+            status = getattr(error.response, 'status_code', None)
+            if status in {404, 410} and delta_link:
+                print('Outlook delta cursor expired; caller should fall back to a full sync.', flush=True)
+                return None
+            raise
+
+    def create_inbox_subscription(self, access_token: str, notification_url: str,
+                                  client_state: str, ttl_minutes: int = 4200) -> dict:
+        expires_at = (datetime.now(timezone.utc) + timedelta(minutes=ttl_minutes)).isoformat()
+        payload = {
+            'changeType': 'created,updated,deleted',
+            'notificationUrl': notification_url,
+            'resource': '/me/messages',
+            'expirationDateTime': expires_at,
+            'clientState': str(client_state),
+        }
+
+        resp = self._request_graph(
+            'POST',
+            f'{GRAPH_BASE}/subscriptions',
+            access_token,
+            json=payload,
+        )
+        return resp.json()
 
     def send_email(self, access_token: str, to: str, subject: str, body: str) -> dict:
         payload = {
