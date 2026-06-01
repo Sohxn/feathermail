@@ -324,7 +324,7 @@ export default function EmailView({ email, onReply }: EmailViewProps) {
     <div className="flex flex-col p-2 md:p-4 gap-3">
 
       {/* ── Header card ── */}
-      <div className="rounded-2xl p-4 md:p-6 glass">
+      <div className="rounded-2xl p-4 md:p-6 bg-card">
         <div className="flex items-start justify-between mb-4 gap-2">
           <h1 className="text-lg md:text-2xl font-bold flex-1 text-foreground break-words">
             {email.subject || "(No Subject)"}
@@ -385,26 +385,14 @@ export default function EmailView({ email, onReply }: EmailViewProps) {
       </div>
 
       {/* ── AI Summary placeholder ── */}
-      <div className="rounded-2xl shadow-xl p-4 flex items-center justify-center gap-2 min-h-[56px] glass">
+      <div className="rounded-2xl shadow-xl p-4 flex items-center justify-center gap-2 min-h-[56px] bg-card">
         <span className="font-semibold text-sm">AI SUMMARY</span>
         <Sparkles className="w-4 h-4" />
       </div>
 
       {/* ── Email body ── */}
       <div
-        className="glass-black rounded-2xl shadow-xl p-4 md:p-6 overflow-x-hidden transition-colors duration-300"
-        style={{
-          background:
-            isNeo
-              ? "#111111"
-              : emailWantsDarkBg === true
-              ? "rgba(10,10,10,0.92)"
-              : emailWantsDarkBg === false
-              ? "rgba(255,255,255,0.95)"
-              : undefined,
-          backdropFilter: isNeo || emailWantsDarkBg === null ? undefined : "blur(18px)",
-        }}
-      >
+        className="bg-card rounded-2xl shadow-xl p-4 md:p-6 overflow-x-hidden transition-colors duration-300">
         {email.body_html ? (
           <IframeEmailBody html={email.body_html} onDarkDetected={setEmailWantsDarkBg} />
         ) : (

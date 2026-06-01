@@ -9,7 +9,7 @@ import EmailListItem from "@/components/email/EmailListItem";
 import EmailView from "@/components/email/EmailView";
 import { ComposeModal, ComposeInitData } from "@/components/email/ComposeModal";
 import { SettingsPanel } from "@/components/email/SettingsPanel";
-import { RefreshCw, Menu, ArrowLeft, PenSquare } from "lucide-react";
+import { RefreshCw, Menu, ArrowLeft, PenSquare, Search } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { isDev } from "@/lib/devMode";
 
@@ -219,14 +219,16 @@ export default function Index() {
         ${mobilePanel === "list" ? "flex w-full" : "hidden"}
       `}>
         {/* Header */}
-        <div className="h-14 px-4 flex items-center justify-between flex-shrink-0 glass rounded-xl m-1">
-          <div className="flex items-center gap-3">
+        <div className="h-14 mx-1 my-2 px-4 flex items-center justify-between flex-shrink-0 rounded-2xl">
+          <div className="flex items-center gap-3 min-w-0">
+            
             <button
               onClick={() => setMobilePanel("sidebar")}
-              className="md:hidden p-1 hover:bg-secondary rounded-md transition-colors"
-            >
+              className="md:hidden p-1 hover:bg-secondary rounded-md transition-colors">
               <Menu className="w-5 h-5" />
             </button>
+            
+            
             <div>
               <h1 className="text-sm font-semibold text-[#ffffff]">
                 {activeFolder.charAt(0).toUpperCase() + activeFolder.slice(1)}
@@ -234,13 +236,21 @@ export default function Index() {
               <p className="text-xs text-muted-foreground">{selectedAccountName}</p>
             </div>
           </div>
+
+
           <button
             onClick={sync}
             disabled={isSyncing}
-            className="p-2 hover:bg-secondary rounded-full transition-colors glass rounded-full disabled:opacity-50"
+            className="shrink-0 ml-3 hover:bg-secondary rounded-full transition-colors glass rounded-full disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`} />
           </button>
+        </div>
+
+        {/* search bar */}
+        <div className="flex items-center gap-3 mr-3 ml-3 h-12 px-4 rounded-2xl bg-[#252634] shadow-[inset_3px_3px_10px_#1c1d28,inset_-3px_-3px_10px_#2e2f40] text-muted-foreground">
+          <Search className="w-4 h-4 shrink-0" />
+          <span className="text-sm">Search mail</span>
         </div>
 
         {/* Email items — relative so FAB can be positioned inside */}

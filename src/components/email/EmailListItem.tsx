@@ -29,7 +29,7 @@ export default function EmailListItem({ email, isSelected, onClick }: EmailListI
     <div
       onClick={onClick}
       className={cn(
-        "mx-1 my-2 rounded-2xl p-4 cursor-pointer transition-colors",
+        "mx-1 my-3 rounded-2xl p-4 cursor-pointer transition-colors",
         isNeo
           ? isSelected
             ? "border border-border bg-card text-foreground shadow-[0_12px_30px_rgba(0,0,0,0.35)]"

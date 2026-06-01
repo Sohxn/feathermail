@@ -27,7 +27,7 @@ const sharedRadiusVars = {
 };
 
 const sharedTypographyVars = {
-  "--font-family-base": "'Karla', sans-serif",
+  "--font-family-base": "'Roboto Mono', monospace",
   "--font-family-brand": "'Magnolia Script', cursive",
   "--font-weight-base": "600",
   "--font-weight-medium": "600",
@@ -128,9 +128,9 @@ export const THEME_PRESETS: Record<ThemeName, ThemePreset> = {
       "linear-gradient(90deg, #ff6b6b 0 25%, #ffb86b 25% 50%, #ffe66b 50% 75%, #8fd19e 75% 100%)",
     ].join(", "),
     cssVars: {
-      "--background": "#252525",
+      "--background": "#272833",
       "--foreground": "#ffffff",
-      "--card": "#9694ff",
+      "--card": "#272833",
       "--card-foreground": "#f5f5f5",
       "--popover": "#171717",
       "--popover-foreground": "#f5f5f5",
@@ -161,7 +161,7 @@ export const THEME_PRESETS: Record<ThemeName, ThemePreset> = {
       "--sidebar-accent-foreground": "#f5f5f5",
       "--sidebar-border": "#2e2e2e",
       "--sidebar-ring": "#f1b86b",
-      "--app-background": "#1a1a1a",
+      "--app-background": "#1a1b22",
       ...sharedRadiusVars,
       ...sharedTypographyVars,
       ...neoGlassVars,

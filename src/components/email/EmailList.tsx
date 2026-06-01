@@ -54,7 +54,7 @@ export function EmailList({
       </div>
 
       {/* Header */}
-      <div className="px-4 py-2 flex items-center justify-between">
+      <div className="px-4 py-2 flex items-center justify-left">
         <h2 className="text-xs font-medium uppercase tracking-wide">
           {folderName} ({sortedEmails.length})
         </h2>
