@@ -107,7 +107,7 @@ def _sync_outlook_account(user_id: str, account: dict, force_full: bool = False)
             token_expiry=token_expiry,
             max_results=100,
         )
-
+#  s
     if not result:
         print(f"{email_address}: Outlook sync returned no result", flush=True)
         return 0, None
