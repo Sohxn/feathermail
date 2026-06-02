@@ -230,6 +230,7 @@ def gmail_oauth_callback():
             'token_expiry': tokens['token_expiry'],
             'is_primary': is_first,
             'is_connected': True,
+            'backfill_complete': False,
             'last_history_id': str(existing_account_row['last_history_id']) if had_history else None,
         }
 
@@ -266,6 +267,7 @@ def gmail_oauth_callback():
 # ── GMAIL BACKFILL ────────────────────────────────────────────────────────
 def run_initial_gmail_backfill(user_id: str, account: dict):
     account_id = account.get('id')
+    backfill_succeeded = False
     try:
         email_address = account['email_address']
         access_token  = account['access_token']
@@ -346,6 +348,7 @@ def run_initial_gmail_backfill(user_id: str, account: dict):
             )
 
         print(f"{email_address}: backfill complete — {total_saved} emails saved", flush=True)
+        backfill_succeeded = True
 
     except Exception as e:
         print(f"Backfill error for {account.get('email_address', 'unknown')}: {e}", flush=True)
@@ -353,7 +356,7 @@ def run_initial_gmail_backfill(user_id: str, account: dict):
         if account_id:
             try:
                 supabase_service.client.table('email_accounts')\
-                    .update({'backfill_complete': True})\
+                    .update({'backfill_complete': backfill_succeeded})\
                     .eq('id', account_id)\
                     .execute()
             except Exception as e:
@@ -720,6 +723,7 @@ def outlook_oauth_callback():
             'token_expiry':  tokens['token_expiry'],
             'is_primary':    is_first,
             'is_connected':  True,
+            'backfill_complete': False,
             # Clear any stale delta link so backfill does a full sync
             'last_history_id': None,
         }
@@ -761,15 +765,17 @@ def outlook_oauth_callback():
 
 def _run_outlook_backfill(user_id: str, account: dict):
     """Full sync for a newly connected Outlook account."""
+    backfill_succeeded = False
     try:
         saved_count, _ = _sync_outlook_account(user_id, account, force_full=True)
         print(f"Outlook backfill complete for {account['email_address']}: {saved_count} emails saved", flush=True)
+        backfill_succeeded = True
     except Exception as e:
         print(f"Outlook backfill error for {account.get('email_address', 'unknown')}: {e}", flush=True)
     finally:
         try:
             supabase_service.client.table('email_accounts')\
-                .update({'backfill_complete': True})\
+                .update({'backfill_complete': backfill_succeeded})\
                 .eq('id', account['id'])\
                 .execute()
         except Exception as e:

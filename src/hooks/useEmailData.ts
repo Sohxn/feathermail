@@ -55,14 +55,14 @@ export function useEmailData() {
     return () => window.clearInterval(rotationTimer);
   }, [store.emails.length]);
 
-  const loadData = async () => {
+  const loadData = async (force = false) => {
     store.setLoading(true);
     store.setError(null);
 
     if (isDev) {
       loadDevData();
       store.setLoading(false);
-      return;
+      return true;
     }
 
     try {
@@ -70,7 +70,12 @@ export function useEmailData() {
       const user = await api.getCurrentUser();
       if (!user) {
         store.setLoading(false);
-        return;
+        return false;
+      }
+
+      if (!force && store.loadedUserId === user.id) {
+        store.setLoading(false);
+        return false;
       }
 
       const [accounts, emails] = await Promise.all([
@@ -80,16 +85,19 @@ export function useEmailData() {
 
       store.setAccounts(accounts);
       store.appendEmails(emails);
+      store.setLoadedUserId(user.id);
       store.setHasMore(emails.length === PRODUCTION_PAGE_SIZE);
 
       if (emails.length > 0) {
         store.setSelectedEmailId(emails[0].id);
       }
+      return true;
     } catch (error: any) {
       if (error.message !== 'Not authenticated') {
         store.setError(error.message);
         toast.error('Failed to load emails');
       }
+      return false;
     } finally {
       store.setLoading(false);
     }

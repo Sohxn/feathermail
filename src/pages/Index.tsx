@@ -114,11 +114,11 @@ export default function Index() {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'email_accounts' },
         (payload) => {
-          if (payload.new?.backfill_complete === true) {
+          if (payload.old?.backfill_complete !== true && payload.new?.backfill_complete === true) {
             console.log('Backfill complete, reloading emails...');
             // Reset pagination and reload fresh
             useEmailStore.getState().resetPagination();
-            loadData();
+            loadData(true);
           }
         }
       )
@@ -147,8 +147,16 @@ export default function Index() {
   useEffect(() => {
     if (authLoading) return;
     if (!isAuthenticated) { navigate("/login"); return; }
-    loadData();
-    syncSilent(); 
+
+    let cancelled = false;
+
+    (async () => {
+      await loadData();
+      if (cancelled) return;
+      await syncSilent();
+    })();
+
+    return () => { cancelled = true; };
   }, [isAuthenticated, authLoading, navigate]);
 
 

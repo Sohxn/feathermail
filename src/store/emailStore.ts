@@ -69,6 +69,7 @@ interface EmailState {
   isLoading: boolean;
   isSyncing: boolean;
   error: string | null;
+  loadedUserId: string | null;
 
   cursor: string | null;       // received_at of the last loaded email
   hasMore: boolean;            // false when we've hit the end
@@ -84,6 +85,7 @@ interface EmailState {
   setLoading: (loading: boolean) => void;
   setSyncing: (syncing: boolean) => void;
   setError: (error: string | null) => void;
+  setLoadedUserId: (userId: string | null) => void;
   setHasMore: (val: boolean) => void;
   
   // Email Operations
@@ -115,6 +117,7 @@ export const useEmailStore = create<EmailState>()(
     isLoading: false,
     isSyncing: false,
     error: null,
+    loadedUserId: null,
     cursor: null,
     hasMore: true,
 
@@ -150,6 +153,7 @@ export const useEmailStore = create<EmailState>()(
     setLoading: (loading) => set({ isLoading: loading }),
     setSyncing: (syncing) => set({ isSyncing: syncing }),
     setError: (error) => set({ error }),
+    setLoadedUserId: (userId) => set({ loadedUserId: userId }),
     
     // Email operations - modify email state
     markEmailAsRead: (emailId) => 
