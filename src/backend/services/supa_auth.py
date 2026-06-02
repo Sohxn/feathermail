@@ -81,6 +81,43 @@ class SupabaseService:
 
         print(f"ERROR: could not save history_id for {email_address or account_id} after 3 attempts", flush=True)
 
+    def update_account_tokens(self, account_id: str, access_token: str, refresh_token: str | None = None,
+                              token_expiry: str | None = None, email_address: str = ''):
+        """
+        Persist refreshed provider tokens after a sync.
+
+        Outlook can rotate refresh tokens on a successful refresh, so the stored
+        credentials need to be updated or the next incremental sync can fail with
+        invalid_grant.
+        """
+        self._refresh_client()
+
+        payload = {
+            'access_token': access_token,
+            'last_sync': self._now_iso(),
+        }
+
+        if refresh_token is not None:
+            payload['refresh_token'] = refresh_token
+        if token_expiry is not None:
+            payload['token_expiry'] = token_expiry
+
+        for attempt in range(3):
+            try:
+                self.client.table('email_accounts')\
+                    .update(payload)\
+                    .eq('id', account_id)\
+                    .execute()
+                print(f"token refresh saved for {email_address or account_id}", flush=True)
+                return
+            except Exception as e:
+                wait = 0.5 * (2 ** attempt)
+                print(f"update_account_tokens attempt {attempt + 1} failed: {e} — retrying in {wait}s", flush=True)
+                time.sleep(wait)
+                self._refresh_client()
+
+        print(f"ERROR: could not save refreshed tokens for {email_address or account_id} after 3 attempts", flush=True)
+
     # ── EMAILS ────────────────────────────────────────────────────────────
 
     def save_emails_batch(self, emails: list):

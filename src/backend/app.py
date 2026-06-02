@@ -124,6 +124,16 @@ def _sync_outlook_account(user_id: str, account: dict, force_full: bool = False)
         flush=True,
     )
 
+    token_updates = result.get('token_updates') if isinstance(result, dict) else None
+    if token_updates:
+        supabase_service.update_account_tokens(
+            account['id'],
+            token_updates['access_token'],
+            refresh_token=token_updates.get('refresh_token'),
+            token_expiry=token_updates.get('token_expiry'),
+            email_address=email_address,
+        )
+
     # Persist the new delta link so the next sync is incremental
     if new_delta:
         supabase_service.update_account_history_id(
