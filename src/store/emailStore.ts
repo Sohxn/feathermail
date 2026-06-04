@@ -1,7 +1,7 @@
 /**
  * Email Store - Single source of truth for all email data
  * Works across web, desktop, and mobile platforms
- * 
+ *
  * This store manages:
  * - Email accounts (Gmail, Outlook, etc.)
  * - Emails from all accounts
@@ -43,7 +43,7 @@ export interface Email {
   is_starred: boolean;
   is_archived: boolean;
   is_trashed: boolean;
-  
+
   // Joined data from account
   email_accounts?: {
     email_address: string;
@@ -59,24 +59,25 @@ interface EmailState {
   // Data
   accounts: EmailAccount[];
   emails: Email[];
-  
+
   // UI State
   selectedEmailId: string | null;
   selectedAccountId: string | null; // null = "All Accounts"
   activeFolder: 'inbox' | 'starred' | 'sent' | 'drafts' | 'archive' | 'trash';
-  
+
   // Loading States
   isLoading: boolean;
   isSyncing: boolean;
   error: string | null;
   loadedUserId: string | null;
 
-  cursor: string | null;       // received_at of the last loaded email
-  hasMore: boolean;            // false when we've hit the end
-  appendEmails: (emails: Email[]) => void;  // adds to existing list
-  resetPagination: () => void; // call when switching folders/accounts
-  
-  // Actions (functions to modify state)
+  cursor: string | null;       // received_at of the last loaded email (oldest in cache)
+  hasMore: boolean;            // false when we've hit the end of the mailbox
+
+  appendEmails: (emails: Email[]) => void;
+  resetPagination: () => void;
+
+  // Actions
   setAccounts: (accounts: EmailAccount[]) => void;
   setEmails: (emails: Email[]) => void;
   setSelectedEmailId: (id: string | null) => void;
@@ -87,20 +88,23 @@ interface EmailState {
   setError: (error: string | null) => void;
   setLoadedUserId: (userId: string | null) => void;
   setHasMore: (val: boolean) => void;
-  
+
   // Email Operations
   markEmailAsRead: (emailId: string) => void;
   toggleEmailStar: (emailId: string) => void;
   archiveEmail: (emailId: string) => void;
   trashEmail: (emailId: string) => void;
-  
+
   // Computed/Derived Data
   getFilteredEmails: () => Email[];
   getSelectedEmail: () => Email | null;
   getFolderCounts: () => Record<string, number>;
-
-  
 }
+
+// Max number of emails to keep in memory at once (per session).
+// Oldest messages beyond this are dropped from the in‑memory cache,
+// but remain in Supabase and can be reloaded via pagination.
+const MAX_EMAILS_IN_STORE = 500;
 
 // ============================================================
 // STORE IMPLEMENTATION
@@ -121,30 +125,55 @@ export const useEmailStore = create<EmailState>()(
     cursor: null,
     hasMore: true,
 
-    // implementation
     setHasMore: (val) => set({ hasMore: val }),
 
     appendEmails: (newEmails) =>
-    set((state) => {
-      const existingIds = new Set(state.emails.map(e => e.id));
-      const fresh = newEmails.filter(e => !existingIds.has(e.id));
-      state.emails.push(...fresh);
-      
-      // Always keep newest-first regardless of insertion order
-      state.emails.sort((a, b) =>
-        new Date(b.received_at).getTime() - new Date(a.received_at).getTime()
-      );
+      set((state) => {
+        if (!newEmails || newEmails.length === 0) {
+          // Nothing to merge; cursor/hasMore stay unchanged
+          return;
+        }
 
-      // Cursor = oldest email seen (for pagination)
-      if (state.emails.length > 0) {
-        state.cursor = state.emails[state.emails.length - 1].received_at;
-      }
-  }),
+        // De‑dupe by id against what we already have
+        const existingIds = new Set(state.emails.map((e) => e.id));
+        const fresh = newEmails.filter((e) => !existingIds.has(e.id));
 
-  resetPagination: () =>
-  set({ emails: [], cursor: null, hasMore: true }),
-    
-    // Simple setters - update one piece of state
+        if (fresh.length === 0) {
+          // No new unique emails
+          return;
+        }
+
+        state.emails.push(...fresh);
+
+        // Always keep newest‑first regardless of insertion order
+        state.emails.sort(
+          (a, b) =>
+            new Date(b.received_at).getTime() - new Date(a.received_at).getTime(),
+        );
+
+        // Trim to max size to keep memory bounded
+        if (state.emails.length > MAX_EMAILS_IN_STORE) {
+          state.emails = state.emails.slice(0, MAX_EMAILS_IN_STORE);
+        }
+
+        // Cursor = oldest email currently in the in‑memory cache
+        if (state.emails.length > 0) {
+          state.cursor = state.emails[state.emails.length - 1].received_at;
+        } else {
+          state.cursor = null;
+        }
+      }),
+
+    // Full reload (used on initial load / user change / dev-mode)
+    resetPagination: () =>
+      set({
+        emails: [],
+        cursor: null,
+        hasMore: true,
+        selectedEmailId: null,
+      }),
+
+    // Simple setters
     setAccounts: (accounts) => set({ accounts }),
     setEmails: (emails) => set({ emails }),
     setSelectedEmailId: (id) => set({ selectedEmailId: id }),
@@ -154,97 +183,109 @@ export const useEmailStore = create<EmailState>()(
     setSyncing: (syncing) => set({ isSyncing: syncing }),
     setError: (error) => set({ error }),
     setLoadedUserId: (userId) => set({ loadedUserId: userId }),
-    
+
     // Email operations - modify email state
-    markEmailAsRead: (emailId) => 
+    markEmailAsRead: (emailId) =>
       set((state) => {
-        const email = state.emails.find(e => e.id === emailId);
+        const email = state.emails.find((e) => e.id === emailId);
         if (email) {
           email.is_read = true;
         }
       }),
-    
+
     toggleEmailStar: (emailId) =>
       set((state) => {
-        const email = state.emails.find(e => e.id === emailId);
+        const email = state.emails.find((e) => e.id === emailId);
         if (email) {
           email.is_starred = !email.is_starred;
         }
       }),
-    
+
     archiveEmail: (emailId) =>
       set((state) => {
-        const email = state.emails.find(e => e.id === emailId);
+        const email = state.emails.find((e) => e.id === emailId);
         if (email) {
           email.is_archived = true;
         }
       }),
-    
+
     trashEmail: (emailId) =>
       set((state) => {
-        const email = state.emails.find(e => e.id === emailId);
+        const email = state.emails.find((e) => e.id === emailId);
         if (email) {
           email.is_trashed = true;
         }
       }),
-    
+
     // Computed values - calculate on demand
     getFilteredEmails: () => {
       const state = get();
       let filtered = state.emails;
-      
+
       // Filter by account (if specific account selected)
       if (state.selectedAccountId) {
-        filtered = filtered.filter(e => e.account_id === state.selectedAccountId);
+        filtered = filtered.filter(
+          (e) => e.account_id === state.selectedAccountId,
+        );
       }
-      
+
       // Filter by folder
       switch (state.activeFolder) {
         case 'inbox':
-          filtered = filtered.filter(e => !e.is_archived && !e.is_trashed);
+          filtered = filtered.filter(
+            (e) => !e.is_archived && !e.is_trashed,
+          );
           break;
         case 'starred':
-          filtered = filtered.filter(e => e.is_starred && !e.is_trashed);
+          filtered = filtered.filter((e) => e.is_starred && !e.is_trashed);
           break;
         case 'sent':
-          filtered = filtered.filter(e => e.labels?.includes('SENT') && !e.is_trashed);
+          filtered = filtered.filter(
+            (e) => e.labels?.includes('SENT') && !e.is_trashed,
+          );
           break;
         case 'drafts':
           filtered = [];
           break;
         case 'archive':
-          filtered = filtered.filter(e => e.is_archived && !e.is_trashed);
+          filtered = filtered.filter((e) => e.is_archived && !e.is_trashed);
           break;
         case 'trash':
-          filtered = filtered.filter(e => e.is_trashed);
+          filtered = filtered.filter((e) => e.is_trashed);
           break;
       }
-      
+
       // Sort by received date (newest first)
-      return filtered.sort((a, b) => 
-        new Date(b.received_at).getTime() - new Date(a.received_at).getTime()
+      return filtered.sort(
+        (a, b) =>
+          new Date(b.received_at).getTime() -
+          new Date(a.received_at).getTime(),
       );
     },
-    
+
     getSelectedEmail: () => {
       const state = get();
-      return state.emails.find(e => e.id === state.selectedEmailId) || null;
+      return state.emails.find((e) => e.id === state.selectedEmailId) || null;
     },
-    
+
     getFolderCounts: () => {
       const state = get();
       const filtered = state.selectedAccountId
-        ? state.emails.filter(e => e.account_id === state.selectedAccountId)
+        ? state.emails.filter((e) => e.account_id === state.selectedAccountId)
         : state.emails;
-      
+
       return {
-        inbox: filtered.filter(e => !e.is_archived && !e.is_trashed && !e.is_read).length,
-        starred: filtered.filter(e => e.is_starred && !e.is_trashed).length,
-        sent: filtered.filter(e => e.labels?.includes('SENT') && !e.is_trashed).length,
+        inbox: filtered.filter(
+          (e) => !e.is_archived && !e.is_trashed && !e.is_read,
+        ).length,
+        starred: filtered.filter((e) => e.is_starred && !e.is_trashed).length,
+        sent: filtered.filter(
+          (e) => e.labels?.includes('SENT') && !e.is_trashed,
+        ).length,
         drafts: 0, // Not implemented yet
-        archive: filtered.filter(e => e.is_archived && !e.is_trashed).length,
-        trash: filtered.filter(e => e.is_trashed).length,
+        archive: filtered.filter((e) => e.is_archived && !e.is_trashed).length,
+        trash: filtered.filter((e) => e.is_trashed).length,
       };
     },
-  }))
+  })),
 );

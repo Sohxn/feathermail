@@ -1,21 +1,22 @@
-/**
- * Email Data Hook
- * Loads emails and accounts into the store
- * Syncs with backend
- */
-
 import { useCallback, useEffect } from 'react';
 import { useEmailStore } from '@/store/emailStore';
 import * as api from '@/services/apiClient';
 import { toast } from 'sonner';
 import { isDev } from '@/lib/devMode';
-import { devEmailAccounts, getDevEmailsPage, hasMoreDevEmails, DEV_EMAIL_PAGE_SIZE, DEV_EMAIL_ROTATION_INTERVAL_MS, rotateDevEmails } from '@/data/devEmails';
+import {
+  devEmailAccounts,
+  getDevEmailsPage,
+  hasMoreDevEmails,
+  DEV_EMAIL_PAGE_SIZE,
+  DEV_EMAIL_ROTATION_INTERVAL_MS,
+  rotateDevEmails,
+} from '@/data/devEmails';
 import { fetchEmailsPage } from '@/services/apiClient';
 
 const PRODUCTION_PAGE_SIZE = 15;
 
 export function useEmailData() {
-  const store = useEmailStore();
+  const store = useEmailStore();  
 
   const loadDevData = () => {
     store.resetPagination();
@@ -23,13 +24,14 @@ export function useEmailData() {
 
     const firstPage = getDevEmailsPage(null, DEV_EMAIL_PAGE_SIZE);
     store.setEmails(firstPage);
-    store.setHasMore(false);
+    store.setHasMore(hasMoreDevEmails(null));
 
     if (firstPage.length > 0) {
       store.setSelectedEmailId(firstPage[0].id);
     }
   };
 
+  // Dev‑mode rotation for the playground inbox
   useEffect(() => {
     if (!isDev || store.emails.length === 0) {
       return;
@@ -46,7 +48,9 @@ export function useEmailData() {
       const currentSelectedId = useEmailStore.getState().selectedEmailId;
       useEmailStore.getState().setEmails(nextEmails);
 
-      const selectedStillExists = nextEmails.some((email) => email.id === currentSelectedId);
+      const selectedStillExists = nextEmails.some(
+        (email) => email.id === currentSelectedId,
+      );
       if (!selectedStillExists) {
         useEmailStore.getState().setSelectedEmailId(nextEmails[0].id);
       }
@@ -55,6 +59,10 @@ export function useEmailData() {
     return () => window.clearInterval(rotationTimer);
   }, [store.emails.length]);
 
+  /**
+   * Full reload for the current user.
+   * This is used on first load or when the authenticated user changes.
+   */
   const loadData = async (force = false) => {
     store.setLoading(true);
     store.setError(null);
@@ -66,21 +74,24 @@ export function useEmailData() {
     }
 
     try {
-      store.resetPagination();
       const user = await api.getCurrentUser();
       if (!user) {
         store.setLoading(false);
         return false;
       }
 
-      if (!force && store.loadedUserId === user.id) {
+      // If we already loaded this user and not forcing, skip reload
+      if (!force && store.loadedUserId === user.id && store.emails.length > 0) {
         store.setLoading(false);
         return false;
       }
 
+      // Full reload: clear cache + pagination state
+      store.resetPagination();
+
       const [accounts, emails] = await Promise.all([
         api.fetchEmailAccounts(),
-        fetchEmailsPage(null),
+        fetchEmailsPage(null, PRODUCTION_PAGE_SIZE),
       ]);
 
       store.setAccounts(accounts);
@@ -103,6 +114,11 @@ export function useEmailData() {
     }
   };
 
+  /**
+   * Load next page of emails (older than current cursor).
+   * Uses the global mailbox cursor; filtering by account/folder
+   * is done in the store for the currently selected view.
+   */
   const loadMore = useCallback(async () => {
     if (!store.hasMore || store.isSyncing) return;
 
@@ -113,7 +129,7 @@ export function useEmailData() {
         return;
       }
 
-      const emails = await fetchEmailsPage(store.cursor);
+      const emails = await fetchEmailsPage(store.cursor, PRODUCTION_PAGE_SIZE);
       store.appendEmails(emails);
 
       if (emails.length < PRODUCTION_PAGE_SIZE) {
@@ -126,33 +142,56 @@ export function useEmailData() {
     }
   }, [store.cursor, store.hasMore, store.isSyncing]);
 
+  /**
+   * Background sync:
+   * - Ask backend to sync across providers
+   * - Merge newest page into local cache
+   * - Do NOT clear previously loaded emails
+   */
   const syncSilent = useCallback(async () => {
     if (isDev) return;
 
     try {
       await api.syncEmails();
-      store.resetPagination();
+
       const emails = await fetchEmailsPage(null, PRODUCTION_PAGE_SIZE);
       store.appendEmails(emails);
-      store.setHasMore(emails.length === PRODUCTION_PAGE_SIZE);
+      // We keep hasMore true if we already knew there was more or this page is full
+      if (emails.length < PRODUCTION_PAGE_SIZE && !store.hasMore) {
+        store.setHasMore(false);
+      } else if (emails.length === PRODUCTION_PAGE_SIZE) {
+        store.setHasMore(true);
+      }
     } catch (error: any) {
       console.error('Background sync failed:', error);
     }
-  }, []);
+  }, [store.hasMore]);
 
+  /**
+   * Manual sync:
+   * - Same merge behavior as syncSilent, but with toasts.
+   */
   const sync = async () => {
     if (isDev) {
-      toast.info('dev mode: local inbox is already using mock production-shaped mail');
+      toast.info(
+        'dev mode: local inbox is already using mock production-shaped mail',
+      );
       return;
     }
 
     try {
       store.setSyncing(true);
+
       const result = await api.syncEmails();
-      store.resetPagination();
+
       const emails = await fetchEmailsPage(null, PRODUCTION_PAGE_SIZE);
       store.appendEmails(emails);
-      store.setHasMore(emails.length === PRODUCTION_PAGE_SIZE);
+
+      if (emails.length < PRODUCTION_PAGE_SIZE && !store.hasMore) {
+        store.setHasMore(false);
+      } else if (emails.length === PRODUCTION_PAGE_SIZE) {
+        store.setHasMore(true);
+      }
 
       if (result.synced > 0) {
         toast.success(`Synced ${result.synced} new emails`);
