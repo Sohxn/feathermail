@@ -26,40 +26,91 @@ interface EmailViewProps {
 
 /**
  * Sanitise HTML while KEEPING inline styles and safe attributes.
- * We allow style so the email renders as the sender intended —
- * exactly what Gmail / Outlook / Apple Mail do.
- * Scripts, iframes, and event handlers are still stripped.
  */
 function getSanitizedHTML(html: string): string {
   return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: [
-      "p", "br", "strong", "b", "em", "i", "u", "s", "strike",
-      "a", "ul", "ol", "li", "blockquote",
-      "h1", "h2", "h3", "h4", "h5", "h6",
-      "div", "span", "section", "article", "header", "footer", "main",
-      "img", "figure", "figcaption",
-      "table", "thead", "tbody", "tfoot", "tr", "td", "th", "colgroup", "col",
-      "hr", "pre", "code", "center", "font",
-      // Layout helpers used by email builders
-      "html", "head", "body", "meta", "title", "style",
+      "p",
+      "br",
+      "strong",
+      "b",
+      "em",
+      "i",
+      "u",
+      "s",
+      "strike",
+      "a",
+      "ul",
+      "ol",
+      "li",
+      "blockquote",
+      "h1",
+      "h2",
+      "h3",
+      "h4",
+      "h5",
+      "h6",
+      "div",
+      "span",
+      "section",
+      "article",
+      "header",
+      "footer",
+      "main",
+      "img",
+      "figure",
+      "figcaption",
+      "table",
+      "thead",
+      "tbody",
+      "tfoot",
+      "tr",
+      "td",
+      "th",
+      "colgroup",
+      "col",
+      "hr",
+      "pre",
+      "code",
+      "center",
+      "font",
+      "html",
+      "head",
+      "body",
+      "meta",
+      "title",
+      "style",
     ],
     ALLOWED_ATTR: [
-      // Presentation
-      "style", "class", "id",
-      // Links / images
-      "href", "src", "srcset", "alt", "title", "loading",
-      // Table layout (used by almost every marketing email)
-      "width", "height", "border", "cellpadding", "cellspacing",
-      "align", "valign", "bgcolor", "background",
-      // Typography (legacy <font> tag)
-      "color", "face", "size",
-      // Misc
-      "target", "rel", "role", "aria-label", "aria-hidden",
+      "style",
+      "class",
+      "id",
+      "href",
+      "src",
+      "srcset",
+      "alt",
+      "title",
+      "loading",
+      "width",
+      "height",
+      "border",
+      "cellpadding",
+      "cellspacing",
+      "align",
+      "valign",
+      "bgcolor",
+      "background",
+      "color",
+      "face",
+      "size",
+      "target",
+      "rel",
+      "role",
+      "aria-label",
+      "aria-hidden",
     ],
-    // Strip these completely — they're dangerous
     FORBID_TAGS: ["script", "iframe", "object", "embed", "form", "input", "button", "textarea"],
     FORBID_ATTR: ["onclick", "onload", "onerror", "onmouseover", "onfocus", "onblur", "onchange"],
-    // Keep the document structure when it's a full HTML email
     WHOLE_DOCUMENT: false,
     RETURN_DOM: false,
   });
@@ -68,10 +119,19 @@ function getSanitizedHTML(html: string): string {
 /**
  * IframeEmailBody
  * Renders the sanitised HTML inside a sandboxed iframe so the email's
- * own CSS can't bleed into our app UI — the same technique used by
- * Gmail, Outlook Web, Fastmail, and Hey.
+ * own CSS can't bleed into our app UI.
+ *
+ * IMPORTANT CHANGE: we no longer auto-resize the iframe to its content.
+ * The iframe simply fills the parent panel, and scrollbars live either
+ * in the iframe or the outer panel, but the overall layout height stays fixed.
  */
-function IframeEmailBody({ html, onDarkDetected }: { html: string; onDarkDetected?: (isDark: boolean) => void }) {
+function IframeEmailBody({
+  html,
+  onDarkDetected,
+}: {
+  html: string;
+  onDarkDetected?: (isDark: boolean) => void;
+}) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const writeContent = useCallback(() => {
@@ -83,8 +143,6 @@ function IframeEmailBody({ html, onDarkDetected }: { html: string; onDarkDetecte
 
     const sanitized = getSanitizedHTML(html);
 
-    // Inject a minimal reset so images and tables behave sensibly,
-    // but don't fight the email's own inline styles.
     const wrappedHtml = `
       <!DOCTYPE html>
       <html>
@@ -92,11 +150,9 @@ function IframeEmailBody({ html, onDarkDetected }: { html: string; onDarkDetecte
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <style>
-            /* ── Minimal host reset ── */
             html, body {
               margin: 0;
               padding: 0;
-              /* Let email's own font / color win; fall back to the app font variable */
               font-family: var(--font-family-base, "Roboto", sans-serif);
               font-weight: var(--font-weight-base, 400);
               font-size: 14px;
@@ -107,33 +163,26 @@ function IframeEmailBody({ html, onDarkDetected }: { html: string; onDarkDetecte
               overflow-x: hidden;
             }
 
-            /* Images: never overflow the container, keep aspect ratio */
             img {
               max-width: 100% !important;
               height: auto !important;
               display: inline-block;
             }
 
-            /* Block-level images (logos, banners) */
             img[width], img[height] {
-              /* Honor explicit dimensions up to the iframe width */
               max-width: 100% !important;
               height: auto !important;
             }
 
-            /* Table-based email layouts — let them size naturally */
             table {
               border-collapse: collapse;
-              /* Don't force 100% width — many emails use fixed-width tables */
               max-width: 100%;
             }
 
-            /* Links — keep sender's colour if set via inline style, otherwise blue */
             a {
               color: #1a73e8;
             }
 
-            /* Quoted reply blocks */
             blockquote {
               margin: 8px 0 8px 16px;
               padding-left: 12px;
@@ -141,7 +190,6 @@ function IframeEmailBody({ html, onDarkDetected }: { html: string; onDarkDetecte
               color: #6b7280;
             }
 
-            /* Prevent the email from stretching the iframe horizontally */
             body > * {
               max-width: 100%;
               overflow-x: hidden;
@@ -156,8 +204,7 @@ function IframeEmailBody({ html, onDarkDetected }: { html: string; onDarkDetecte
     doc.write(wrappedHtml);
     doc.close();
 
-    // Sample visible text colors from the rendered email so the parent can
-    // choose a contrasting container background.
+    // Keep the dark/light detection — it doesn't affect layout.
     requestAnimationFrame(() => {
       try {
         const textNodes = doc.body.querySelectorAll(
@@ -185,36 +232,11 @@ function IframeEmailBody({ html, onDarkDetected }: { html: string; onDarkDetecte
           }
         }
 
-        // Mostly light text means the email expects a dark canvas.
         onDarkDetected?.(lightCount > darkCount);
       } catch {
-        // Keep default panel style if detection fails.
+        // ignore
       }
     });
-
-    // Auto-resize the iframe to fit its content so we don't show a
-    // double scrollbar — the outer container scrolls instead.
-    const resize = () => {
-      try {
-        const body = doc.body;
-        const html = doc.documentElement;
-        const height = Math.max(
-          body.scrollHeight,
-          body.offsetHeight,
-          html.scrollHeight,
-          html.offsetHeight,
-        );
-        iframe.style.height = `${height + 16}px`;
-      } catch {
-        // cross-origin guard (shouldn't happen with srcdoc, but be safe)
-      }
-    };
-
-    // Resize after paint and again after images load
-    requestAnimationFrame(resize);
-    doc.addEventListener("load", resize, true); // captures image load events
-    setTimeout(resize, 500);  // safety net for slow images
-    setTimeout(resize, 1500);
   }, [html, onDarkDetected]);
 
   useEffect(() => {
@@ -225,12 +247,9 @@ function IframeEmailBody({ html, onDarkDetected }: { html: string; onDarkDetecte
     <iframe
       ref={iframeRef}
       title="Email body"
-      // sandbox allows same-origin so our JS can resize it, but blocks
-      // navigation, popups, forms, and script execution from the email.
       sandbox="allow-same-origin"
-      className="w-full border-0 block"
+      className="w-full h-full border-0 block"
       style={{ minHeight: "200px" }}
-      // Accessibility
       aria-label="Email content"
     />
   );
@@ -238,10 +257,8 @@ function IframeEmailBody({ html, onDarkDetected }: { html: string; onDarkDetecte
 
 /**
  * Plain-text body renderer.
- * Converts URLs to clickable links and preserves whitespace.
  */
 function PlainTextBody({ text }: { text: string }) {
-  // Very simple URL linkifier
   const linked = text.replace(
     /(https?:\/\/[^\s<>"]+)/g,
     '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:#1a73e8">$1</a>',
@@ -251,7 +268,6 @@ function PlainTextBody({ text }: { text: string }) {
     <div
       className="whitespace-pre-wrap text-sm leading-relaxed text-foreground font-mono"
       style={{ wordBreak: "break-word" }}
-      // Safe: we only inject anchor tags around URLs we already extracted
       dangerouslySetInnerHTML={{ __html: linked }}
     />
   );
@@ -264,8 +280,8 @@ function PlainTextBody({ text }: { text: string }) {
 export default function EmailView({ email, onReply }: EmailViewProps) {
   const { theme } = useTheme();
   const isNeo = theme === "neo";
-  const markAsRead   = useEmailStore((state) => state.markEmailAsRead);
-  const toggleStar   = useEmailStore((state) => state.toggleEmailStar);
+  const markAsRead = useEmailStore((state) => state.markEmailAsRead);
+  const toggleStar = useEmailStore((state) => state.toggleEmailStar);
   const archiveEmail = useEmailStore((state) => state.archiveEmail);
   const [emailWantsDarkBg, setEmailWantsDarkBg] = useState<boolean | null>(null);
 
@@ -288,7 +304,7 @@ export default function EmailView({ email, onReply }: EmailViewProps) {
       await api.toggleEmailStar(email.id, email.is_starred);
     } catch {
       toast.error("Failed to update email");
-      toggleStar(email.id); // rollback
+      toggleStar(email.id);
     }
   };
 
@@ -305,11 +321,11 @@ export default function EmailView({ email, onReply }: EmailViewProps) {
   const handleReply = () => {
     if (!onReply) return;
     const dateStr = format(new Date(email.received_at), "PPpp");
-    const quotedHeader = `\n\n---\nOn ${dateStr}, ${email.from_name ?? email.from_email} <${email.from_email}> wrote:\n`;
+    const quotedHeader = `\n\n---\nOn ${dateStr}, ${
+      email.from_name ?? email.from_email
+    } <${email.from_email}> wrote:\n`;
     const originalBody =
-      email.body_text ||
-      email.body_html?.replace(/<[^>]+>/g, "") ||
-      "";
+      email.body_text || email.body_html?.replace(/<[^>]+>/g, "") || "";
     const quoted = originalBody
       .split("\n")
       .map((l) => `> ${l}`)
@@ -321,9 +337,8 @@ export default function EmailView({ email, onReply }: EmailViewProps) {
   };
 
   return (
-    <div className="flex flex-col p-2 md:p-4 gap-3">
-
-      {/* ── Header card ── */}
+    <div className="flex flex-col h-full p-2 md:p-4 gap-3 overflow-hidden">
+      {/* Header card */}
       <div className="rounded-2xl p-4 md:p-6 bg-card">
         <div className="flex items-start justify-between mb-4 gap-2">
           <h1 className="text-lg md:text-2xl font-bold flex-1 text-foreground break-words">
@@ -384,25 +399,35 @@ export default function EmailView({ email, onReply }: EmailViewProps) {
         </div>
       </div>
 
-      {/* ── AI Summary placeholder ── */}
+      {/* AI Summary placeholder */}
       <div className="rounded-2xl shadow-xl p-4 flex items-center justify-center gap-2 min-h-[56px] bg-card">
         <span className="font-semibold text-sm">AI SUMMARY</span>
         <Sparkles className="w-4 h-4" />
       </div>
 
-      {/* ── Email body ── */}
+      {/* Email body panel — this is now the scroll area */}
       <div
-        className="bg-card rounded-2xl shadow-xl p-4 md:p-6 overflow-x-hidden transition-colors duration-300">
+        className="
+          bg-card rounded-2xl shadow-xl
+          p-4 md:p-6
+          flex-1 min-h-0
+          overflow-x-hidden overflow-y-auto
+          transition-colors duration-300
+        "
+      >
         {email.body_html ? (
-          <IframeEmailBody html={email.body_html} onDarkDetected={setEmailWantsDarkBg} />
+          <IframeEmailBody
+            html={email.body_html}
+            onDarkDetected={setEmailWantsDarkBg}
+          />
         ) : (
           <PlainTextBody text={email.body_text} />
         )}
       </div>
 
-      {/* ── Reply button ── */}
+      {/* Reply button */}
       {onReply && (
-        <div className="pb-4">
+        <div className="pt-2 pb-4">
           <button
             onClick={handleReply}
             className="flex items-center gap-2 px-4 py-2 text-sm border border-border rounded-xl hover:glass transition-colors text-muted-foreground hover:text-foreground"
