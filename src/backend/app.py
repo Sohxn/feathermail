@@ -1434,7 +1434,6 @@ def get_emails():
         args = dict(request.args)
         print(f"[EMAILS API] /api/emails raw query args: {args}", flush=True)
 
-        # Accept both camelCase and snake_case for safety
         user_id    = request.args.get('userId')    or request.args.get('user_id')
         account_id = request.args.get('accountId') or request.args.get('account_id')
         limit      = int(request.args.get('limit', 100))
@@ -1458,11 +1457,10 @@ def get_emails():
             flush=True,
         )
         return jsonify({'success': True, 'emails': emails})
-
     except Exception as e:
         print(f"[EMAILS API] ERROR: {e}", flush=True)
         return jsonify({'error': str(e)}), 500
-        
+
 
 # ── SEND EMAIL (Gmail) ────────────────────────────────────────────────────
 @app.route("/api/gmail/send", methods=["POST"])
