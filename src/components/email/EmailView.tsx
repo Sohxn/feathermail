@@ -197,12 +197,12 @@ function IframeEmailBody({ html, onDarkDetected }: { html: string; onDarkDetecte
     const resize = () => {
       try {
         const body = doc.body;
-        const html = doc.documentElement;
+        const htmlEl = doc.documentElement;
         const height = Math.max(
           body.scrollHeight,
           body.offsetHeight,
-          html.scrollHeight,
-          html.offsetHeight,
+          htmlEl.scrollHeight,
+          htmlEl.offsetHeight,
         );
         iframe.style.height = `${height + 16}px`;
       } catch {
