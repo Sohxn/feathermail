@@ -90,40 +90,66 @@ class SupabaseService:
         Retries with a fresh connection and back-off on failure.
         """
         if not emails:
+            print("[SUPABASE] save_emails_batch called with 0 emails", flush=True)
             return []
+
+        print(
+            f"[SUPABASE] save_emails_batch called with {len(emails)} emails; "
+            f"sample gmail_id={emails[0].get('gmail_id')} account_id={emails[0].get('account_id')}",
+            flush=True,
+        )
 
         for attempt in range(3):
             try:
                 result = self.client.table('emails')\
                     .upsert(emails, on_conflict='gmail_id')\
                     .execute()
-                return result.data
+                rows = result.data or []
+                print(
+                    f"[SUPABASE] save_emails_batch attempt {attempt + 1} succeeded; "
+                    f"rows_returned={len(rows)}",
+                    flush=True,
+                )
+                return rows
             except Exception as e:
                 wait = 0.5 * (2 ** attempt)
-                print(f"save_emails_batch attempt {attempt + 1} failed: {e} — retrying in {wait}s", flush=True)
+                print(
+                    f"[SUPABASE] save_emails_batch attempt {attempt + 1} failed: {e} — "
+                    f"retrying in {wait}s",
+                    flush=True,
+                )
                 time.sleep(wait)
                 self._refresh_client()
 
-        print('ERROR: save_emails_batch failed after 3 attempts', flush=True)
+        print('[SUPABASE] ERROR: save_emails_batch failed after 3 attempts', flush=True)
         return []
 
     def get_emails(self, user_id, limit=100):
+        print(f"[SUPABASE] get_emails user_id={user_id} limit={limit}", flush=True)
         result = self.client.table('emails')\
             .select('*, email_accounts(email_address, provider)')\
             .eq('user_id', user_id)\
             .order('received_at', desc=True)\
             .limit(limit)\
             .execute()
-        return result.data
+        rows = result.data or []
+        print(f"[SUPABASE] get_emails returned {len(rows)} rows for user_id={user_id}", flush=True)
+        return rows
 
     def get_emails_by_account(self, account_id, limit=100):
+        print(f"[SUPABASE] get_emails_by_account account_id={account_id} limit={limit}", flush=True)
         result = self.client.table('emails')\
             .select('*')\
             .eq('account_id', account_id)\
             .order('received_at', desc=True)\
             .limit(limit)\
             .execute()
-        return result.data
+        rows = result.data or []
+        print(
+            f"[SUPABASE] get_emails_by_account returned {len(rows)} rows for account_id={account_id}",
+            flush=True,
+        )
+        return rows
 
     def update_email_status(self, email_id, updates):
         result = self.client.table('emails')\
@@ -131,8 +157,6 @@ class SupabaseService:
             .eq('id', email_id)\
             .execute()
         return result.data
-
-
 
 
     # SUMMARY RELATED QUERIES

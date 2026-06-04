@@ -926,18 +926,24 @@ def _sync_outlook_account(user_id: str, account: dict, force_full: bool = False)
 
     Returns (emails_saved, new_delta_link).
     """
-    email_address = account.get("email_address", account["id"])
-    stored_delta = account.get("last_history_id")  # reused column for Outlook delta link
+    email_address = account.get('email_address', account['id'])
+    stored_delta  = account.get('last_history_id')  # reused as Outlook delta link
 
-    access_token = account["access_token"]
-    refresh_token = account.get("refresh_token")
-    token_expiry = account.get("token_expiry")
+    access_token  = account['access_token']
+    refresh_token = account.get('refresh_token')
+    token_expiry  = account.get('token_expiry')
+
+    print(
+        f"[OUTLOOK SYNC] account_id={account['id']} user_id={user_id} "
+        f"email={email_address} force_full={force_full} stored_delta={stored_delta}",
+        flush=True,
+    )
 
     result = None
 
-    # Try delta (incremental) sync first
+    # ── Try delta (incremental) sync first ───────────────────────────────
     if not force_full and stored_delta:
-        print(f"{email_address}: trying incremental Outlook sync", flush=True)
+        print(f"[OUTLOOK SYNC] {email_address}: trying incremental Outlook sync", flush=True)
         result = outlook_service.fetch_emails_delta(
             access_token=access_token,
             refresh_token=refresh_token,
@@ -945,11 +951,11 @@ def _sync_outlook_account(user_id: str, account: dict, force_full: bool = False)
             delta_link=stored_delta,
         )
         if result is None:
-            print(f"{email_address}: delta cursor expired, falling back to full sync", flush=True)
+            print(f"[OUTLOOK SYNC] {email_address}: delta cursor expired, falling back to full sync", flush=True)
 
-    # Full sync (backfill or fallback)
+    # ── Full sync (backfill or fallback) ─────────────────────────────────
     if result is None:
-        print(f"{email_address}: running full Outlook sync", flush=True)
+        print(f"[OUTLOOK SYNC] {email_address}: running full Outlook sync", flush=True)
         result = outlook_service.fetch_emails_full(
             access_token=access_token,
             refresh_token=refresh_token,
@@ -958,25 +964,35 @@ def _sync_outlook_account(user_id: str, account: dict, force_full: bool = False)
         )
 
     if not result:
-        print(f"{email_address}: Outlook sync returned no result", flush=True)
+        print(f"[OUTLOOK SYNC] {email_address}: Outlook sync returned no result (result is None/empty)", flush=True)
         return 0, None
 
-    emails = result.get("emails", [])
-    new_delta = result.get("delta_link")
+    emails    = result.get('emails', []) or []
+    new_delta = result.get('delta_link')
+
+    print(
+        f"[OUTLOOK SYNC] {email_address}: result has {len(emails)} emails, "
+        f"new_delta={'yes' if new_delta else 'no'}, "
+        f"is_full_sync={result.get('is_full_sync')}",
+        flush=True,
+    )
 
     saved_rows = _save_outlook_emails(user_id, account, emails)
     saved_count = len(saved_rows) if saved_rows else 0
 
     print(
-        f"{email_address}: Outlook sync saved {saved_count}/{len(emails)} emails, "
-        f"delta_link={'yes' if new_delta else 'no'}",
+        f"[OUTLOOK SYNC] {email_address}: saved {saved_count}/{len(emails)} emails to Supabase",
         flush=True,
     )
 
     # Persist the new delta link so the next sync is incremental
     if new_delta:
+        print(
+            f"[OUTLOOK SYNC] {email_address}: updating last_history_id with new delta link",
+            flush=True,
+        )
         supabase_service.update_account_history_id(
-            account["id"],
+            account['id'],
             new_delta,
             email_address=email_address,
         )
@@ -1412,28 +1428,41 @@ def sync_imap():
 
 
 # ── GET EMAILS ────────────────────────────────────────────────────────────
-@app.route("/api/emails", methods=["GET"])
+@app.route('/api/emails', methods=['GET'])
 def get_emails():
     try:
-        # accept both formats (change in production )
-        user_id = request.args.get("user_id") or request.args.get("userId")
-        account_id = request.args.get("accountId") or request.args.get("account_id")
-        limit = int(request.args.get("limit", 100))
+        args = dict(request.args)
+        print(f"[EMAILS API] /api/emails raw query args: {args}", flush=True)
+
+        # Accept both camelCase and snake_case for safety
+        user_id    = request.args.get('userId')    or request.args.get('user_id')
+        account_id = request.args.get('accountId') or request.args.get('account_id')
+        limit      = int(request.args.get('limit', 100))
+
+        print(
+            f"[EMAILS API] resolved user_id={user_id} account_id={account_id} limit={limit}",
+            flush=True,
+        )
 
         if account_id:
             emails = supabase_service.get_emails_by_account(account_id, limit)
         elif user_id:
             emails = supabase_service.get_emails(user_id, limit)
         else:
-            # No filter provided – safest to return empty instead of whole table
+            print("[EMAILS API] no user_id or account_id provided; returning empty list", flush=True)
             emails = []
 
-        return jsonify({"success": True, "emails": emails})
-        
-    except Exception as e:
-        print(f"/api/emails error: {e}", flush=True)
-        return jsonify({"error": str(e)}), 500
+        print(
+            f"[EMAILS API] returning {len(emails)} emails "
+            f"(filtered_by={'account_id' if account_id else 'user_id' if user_id else 'none'})",
+            flush=True,
+        )
+        return jsonify({'success': True, 'emails': emails})
 
+    except Exception as e:
+        print(f"[EMAILS API] ERROR: {e}", flush=True)
+        return jsonify({'error': str(e)}), 500
+        
 
 # ── SEND EMAIL (Gmail) ────────────────────────────────────────────────────
 @app.route("/api/gmail/send", methods=["POST"])
@@ -1571,45 +1600,52 @@ def outlook_webhook():
 
 
 # ── OUTLOOK OAUTH CALLBACK ────────────────────────────────────────────────
-@app.route("/api/outlook/oauth/callback", methods=["POST"])
+@app.route('/api/outlook/oauth/callback', methods=['POST'])
 def outlook_oauth_callback():
     try:
-        data = request.json
-        code = data["code"]
-        user_id = data["user_id"]
+        data    = request.json
+        code    = data['code']
+        user_id = data['user_id']
+
+        print(f"[OUTLOOK OAUTH] callback for user_id={user_id}", flush=True)
 
         tokens = outlook_service.exchange_code_for_tokens(code)
-
-        existing = (
-            supabase_service.client.table("email_accounts")
-            .select("id")
-            .eq("user_id", user_id)
-            .execute()
+        print(
+            f"[OUTLOOK OAUTH] tokens.email={tokens.get('email')} "
+            f"access_token_len={len(tokens.get('access_token') or '')} "
+            f"refresh_token_len={len(tokens.get('refresh_token') or '')}",
+            flush=True,
         )
+
+        existing = supabase_service.client.table('email_accounts')\
+            .select('id').eq('user_id', user_id).execute()
         is_first = len(existing.data) == 0
 
         account_data = {
-            "user_id": user_id,
-            "email_address": tokens["email"],
-            "provider": "outlook",
-            "access_token": tokens["access_token"],
-            "refresh_token": tokens["refresh_token"],
-            "token_expiry": tokens["token_expiry"],
-            "is_primary": is_first,
-            "is_connected": True,
-            "backfill_complete": False,
-            # Clear any stale delta link so backfill does a full sync
-            "last_history_id": None,
+            'user_id':          user_id,
+            'email_address':    tokens['email'],
+            'provider':         'outlook',
+            'access_token':     tokens['access_token'],
+            'refresh_token':    tokens['refresh_token'],
+            'token_expiry':     tokens['token_expiry'],
+            'is_primary':       is_first,
+            'is_connected':     True,
+            'backfill_complete': False,
+            'last_history_id':  None,
         }
 
-        result = (
-            supabase_service.client.table("email_accounts")
-            .upsert(account_data, on_conflict="user_id,email_address")
+        result = supabase_service.client.table('email_accounts')\
+            .upsert(account_data, on_conflict='user_id,email_address')\
             .execute()
-        )
 
         account_row = result.data[0]
-        account_id = account_row["id"]
+        account_id  = account_row['id']
+
+        print(
+            f"[OUTLOOK OAUTH] upserted account_id={account_id} email={account_row['email_address']} "
+            f"backfill_complete={account_row.get('backfill_complete')}",
+            flush=True,
+        )
 
         # Backfill in background
         threading.Thread(
@@ -1620,73 +1656,103 @@ def outlook_oauth_callback():
 
         # Webhook subscription is best-effort
         try:
-            raw_root = request.url_root.rstrip("/")
-            webhook_url = raw_root.replace("http://", "https://") + "/api/outlook/webhook"
-            outlook_service.create_inbox_subscription(
-                access_token=tokens["access_token"],
+            raw_root    = request.url_root.rstrip('/')
+            webhook_url = raw_root.replace('http://', 'https://') + '/api/outlook/webhook'
+            sub = outlook_service.create_inbox_subscription(
+                access_token=tokens['access_token'],
                 notification_url=webhook_url,
                 client_state=account_id,
                 ttl_minutes=OUTLOOK_SUBSCRIPTION_TTL_MINUTES,
             )
-            print(f"Outlook subscription created for {tokens['email']}", flush=True)
+            print(
+                f"[OUTLOOK OAUTH] subscription created id={sub.get('id')} "
+                f"resource={sub.get('resource')}",
+                flush=True,
+            )
         except Exception as sub_err:
-            print(f"Outlook subscription skipped (not critical): {sub_err}", flush=True)
+            print(f"[OUTLOOK OAUTH] subscription skipped (not critical): {sub_err}", flush=True)
 
-        return jsonify({"success": True, "email": tokens["email"], "account_id": account_id})
+        return jsonify({'success': True, 'email': tokens['email'], 'account_id': account_id})
 
     except Exception as e:
-        print(f"Outlook OAuth error: {e}", flush=True)
-        return jsonify({"success": False, "error": str(e)}), 400
-
+        print(f'[OUTLOOK OAUTH] ERROR: {e}', flush=True)
+        return jsonify({'success': False, 'error': str(e)}), 400
 
 def _run_outlook_backfill(user_id: str, account: dict):
     """Full sync for a newly connected Outlook account."""
     backfill_succeeded = False
+    email_address = account.get('email_address', account['id'])
+    print(
+        f"[OUTLOOK BACKFILL] START user_id={user_id} account_id={account['id']} email={email_address}",
+        flush=True,
+    )
     try:
         saved_count, _ = _sync_outlook_account(user_id, account, force_full=True)
         print(
-            f"Outlook backfill complete for {account['email_address']}: {saved_count} emails saved",
+            f"[OUTLOOK BACKFILL] COMPLETE email={email_address} saved_count={saved_count}",
             flush=True,
         )
         backfill_succeeded = True
     except Exception as e:
         print(
-            f"Outlook backfill error for {account.get('email_address', 'unknown')}: {e}",
+            f"[OUTLOOK BACKFILL] ERROR email={email_address}: {e}",
             flush=True,
         )
     finally:
         try:
-            supabase_service.client.table("email_accounts")\
-                .update({"backfill_complete": backfill_succeeded})\
-                .eq("id", account["id"])\
+            supabase_service.client.table('email_accounts')\
+                .update({'backfill_complete': backfill_succeeded})\
+                .eq('id', account['id'])\
                 .execute()
+            print(
+                f"[OUTLOOK BACKFILL] backfill_complete={backfill_succeeded} persisted "
+                f"for account_id={account['id']}",
+                flush=True,
+            )
         except Exception as e:
-            print(f"Failed to mark Outlook backfill complete: {e}", flush=True)
+            print(
+                f"[OUTLOOK BACKFILL] Failed to mark backfill_complete for account_id={account['id']}: {e}",
+                flush=True,
+            )
 
 
 # ── OUTLOOK SYNC ──────────────────────────────────────────────────────────
-@app.route("/api/outlook/sync", methods=["POST"])
+@app.route('/api/outlook/sync', methods=['POST'])
 def sync_outlook():
     try:
-        data = request.json
-        user_id = data["user_id"]
-        account_id = data.get("account_id")
+        data       = request.json or {}
+        user_id    = data.get('user_id')
+        account_id = data.get('account_id')
+
+        print(f"[OUTLOOK API] /api/outlook/sync user_id={user_id} account_id={account_id}", flush=True)
 
         all_accounts = supabase_service.get_user_email_accounts(user_id)
-        accounts = [a for a in all_accounts if a.get("provider") == "outlook"]
+        accounts     = [a for a in all_accounts if a.get('provider') == 'outlook']
+        print(
+            f"[OUTLOOK API] user_id={user_id} has {len(all_accounts)} connected accounts, "
+            f"{len(accounts)} outlook accounts",
+            flush=True,
+        )
+
         if account_id:
-            accounts = [a for a in accounts if a["id"] == account_id]
+            accounts = [a for a in accounts if a['id'] == account_id]
+            print(
+                f"[OUTLOOK API] filtered to account_id={account_id}, "
+                f"remaining_outlook_accounts={len(accounts)}",
+                flush=True,
+            )
 
         total_saved = 0
         for account in accounts:
             saved_count, _ = _sync_outlook_account(user_id, account)
             total_saved += saved_count
 
-        return jsonify({"success": True, "synced": total_saved})
+        print(f"[OUTLOOK API] /api/outlook/sync complete total_saved={total_saved}", flush=True)
+        return jsonify({'success': True, 'synced': total_saved})
 
     except Exception as e:
-        print(f"Outlook sync error: {e}", flush=True)
-        return jsonify({"error": str(e)}), 500
+        print(f'[OUTLOOK API] ERROR in /api/outlook/sync: {e}', flush=True)
+        return jsonify({'error': str(e)}), 500
 
 
 # ── OUTLOOK SEND ──────────────────────────────────────────────────────────
