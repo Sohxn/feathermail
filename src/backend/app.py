@@ -1415,18 +1415,23 @@ def sync_imap():
 @app.route("/api/emails", methods=["GET"])
 def get_emails():
     try:
-        user_id = request.args.get("user_id")
-        account_id = request.args.get("account_id")
+        # accept both formats (change in production )
+        user_id = request.args.get("user_id") or request.args.get("userId")
+        account_id = request.args.get("accountId") or request.args.get("account_id")
         limit = int(request.args.get("limit", 100))
 
-        emails = (
-            supabase_service.get_emails_by_account(account_id, limit)
-            if account_id
-            else supabase_service.get_emails(user_id, limit)
-        )
-        return jsonify({"success": True, "emails": emails})
+        if account_id:
+            emails = supabase_service.get_emails_by_account(account_id, limit)
+        elif user_id:
+            emails = supabase_service.get_emails(user_id, limit)
+        else:
+            # No filter provided – safest to return empty instead of whole table
+            emails = []
 
+        return jsonify({"success": True, "emails": emails})
+        
     except Exception as e:
+        print(f"/api/emails error: {e}", flush=True)
         return jsonify({"error": str(e)}), 500
 
 
