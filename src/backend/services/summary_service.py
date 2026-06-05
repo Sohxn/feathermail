@@ -159,15 +159,31 @@ def call_bitnet_server(email_body: str) -> str:
     summary_schema = {
         "type": "object",
         "properties": {
-            "summary": {"type": "string"},
-            "money": {"type": "string"},
-            "time": {"type": "string"},
+            "summary": {
+                "type": "string",
+                "description": "1–2 sentence plain-language summary of the email."
+            },
+            "money": {
+                "type": "string",
+                "description": "Only explicit monetary amounts mentioned in the email, with currency (e.g. '$120', 'INR 3,499'). Empty string if none."
+            },
+            "time": {
+                "type": "string",
+                "description": "Only concrete deadlines, meeting times, or scheduled dates/times mentioned (e.g. 'Meeting on 5 June at 3PM', 'Payment due by Friday'). Empty string if none."
+            },
             "actions": {
                 "type": "array",
+                "description": "List of specific important actions the recipient should take with respect to the mail.",
                 "items": {"type": "string"}
+            },
+            "importance": {
+                "type": "integer",
+                "description": "Importance score (in decimals) from 0(not important) to 1(very important/urgent), based only on the email content.",
+                "minimum": 0,
+                "maximum": 3
             }
         },
-        "required": ["summary", "money", "time", "actions"],
+        "required": ["summary", "money", "time", "actions", "importance"],
         "additionalProperties": False
     }
 
