@@ -161,7 +161,7 @@ def call_bitnet_server(email_body: str) -> str:
         "properties": {
             "summary": {
                 "type": "string",
-                "description": "1–2 sentence plain-language summary of the email."
+                "description": "plain-language summary of the email."
             },
             "money": {
                 "type": "string",
@@ -173,7 +173,7 @@ def call_bitnet_server(email_body: str) -> str:
             },
             "actions": {
                 "type": "array",
-                "description": "List of specific important actions the recipient should take with respect to the mail.",
+                "description": "List of specific important actions the recipient should take.",
                 "items": {"type": "string"}
             },
             "importance": {
@@ -188,7 +188,7 @@ def call_bitnet_server(email_body: str) -> str:
     }
 
     prompt = (
-        "Extract information from the email into the required JSON fields. "
+        "Extract summary and information from the email into the required JSON fields. "
         "Do not invent facts. Use empty strings or [] when missing.\n\n"
         f"EMAIL:\n{email_body}"
     )
@@ -198,7 +198,7 @@ def call_bitnet_server(email_body: str) -> str:
             {"role": "user", "content": prompt}
         ],
         "temperature": 0,
-        "max_tokens": 160,
+        "max_tokens": 200,
         "stream": False,
         "response_format": {
             "type": "json_schema",
