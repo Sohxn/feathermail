@@ -205,7 +205,7 @@ def call_bitnet_server(email: str) -> str:
             {"role": "user", "content": prompt}
         ],
         "temperature": 0,
-        "max_tokens": 200,
+        "max_tokens": 64,
         "stream": False,
         "response_format": {
             "type": "json_schema",
