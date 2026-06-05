@@ -2,6 +2,7 @@ import hashlib
 import logging
 import os
 import re
+import time
 import random
 import threading
 from datetime import datetime, timezone
@@ -150,6 +151,9 @@ def build_dummy_summary_content(email_body: str) -> str:
 
 
 def call_bitnet_server(email: str) -> str:
+    
+    start = time.time()
+
     if get_summary_mode() == "dummy":
         content = build_dummy_summary_content(email)
         print(f"content: {content}", flush=True)
@@ -214,7 +218,9 @@ def call_bitnet_server(email: str) -> str:
     timeout = httpx.Timeout(timeout_seconds, connect=10.0)
 
     try:
+        resp_start = time.time()
         response = httpx.post(f"{base_url}{path}", json=payload, timeout=timeout)
+        resp_ms = (time.time() - resp_start) * 1000
         response.raise_for_status()
     except httpx.ReadTimeout as exc:
         raise TimeoutError(
@@ -222,7 +228,14 @@ def call_bitnet_server(email: str) -> str:
             f"increase SUMMARY_MODEL_TIMEOUT_SECONDS if the Azure container needs more time"
         ) from exc
 
+
     outer = response.json()
     content = outer["choices"][0]["message"]["content"]
     print(f"content: {content}", flush=True)
+
+    total_ms = (time.time() - start) * 1000
+
+    print(f"[SUMMARY] body_len_chars={body_len} "
+          f"http_ms={resp_ms:.0f} total_ms={total_ms:.0f}",
+          flush=True)
     return content
