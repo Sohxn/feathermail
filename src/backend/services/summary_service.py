@@ -216,6 +216,8 @@ def call_bitnet_server(email: str) -> str:
     }
 
     timeout = httpx.Timeout(timeout_seconds, connect=10.0)
+    
+    body_len = len(email)
 
     try:
         resp_start = time.time()
