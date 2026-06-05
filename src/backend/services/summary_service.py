@@ -168,15 +168,15 @@ def call_bitnet_server(email: str) -> str:
         "properties": {
             "summary": {
                 "type": "string",
-                "description": "plain-language summary of the email."
+                "description": "plain-language summary of the email in 1 line."
             },
             "money": {
                 "type": "string",
-                "description": "Only explicit monetary amounts mentioned in the email, with currency (e.g. '$120', 'INR 3,499'). Empty string if none."
+                "description": "Only explicit monetary amounts mentioned in the email, with currency (e.g. '$120', 'INR 3,499')."
             },
             "time": {
                 "type": "string",
-                "description": "Only concrete deadlines, meeting times, or scheduled dates/times mentioned (e.g. 'Meeting on 5 June at 3PM', 'Payment due by Friday'). Empty string if none."
+                "description": "Only concrete deadlines, meeting times, or scheduled dates/times mentioned (e.g. 'Meeting on 5 June at 3PM', 'Payment due by Friday')."
             },
             "actions": {
                 "type": "array",
@@ -185,7 +185,7 @@ def call_bitnet_server(email: str) -> str:
             },
             "importance": {
                 "type": "number",
-                "description": "Importance score (in decimals) from 0(not important) to 1(very important/urgent), based only on the email content.",
+                "description": "Importance score (in decimals) from 0.0 (not important) to 1.0 (very important/urgent), based only on the email content.",
                 "minimum": 0.0,
                 "maximum": 1.0
             }
@@ -205,7 +205,7 @@ def call_bitnet_server(email: str) -> str:
             {"role": "user", "content": prompt}
         ],
         "temperature": 0,
-        "max_tokens": 64,
+        "max_tokens": 128,
         "stream": False,
         "response_format": {
             "type": "json_schema",
