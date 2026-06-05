@@ -95,7 +95,10 @@ def fetch_or_generate_summary(job_key: str, email_body: str, sender_email_id: st
 def run_summary_worker(job_key: str, email_body: str, sender_email_id: str, model_name: str, content_hash: str, prompt_version: str, user_id: str | None = None):
     logger = logging.getLogger(__name__)
     try:
-        raw_result = call_bitnet_server(email_body)
+        #clean email body
+        trimmed_body = trim_email_body(email_body)
+        print(f"[SUMMARY LOG] {trimmed_body}", flush=True)
+        raw_result = call_bitnet_server(trimmed_body)
         summary_text = extract_json_from_response(raw_result)
         supabase_service.insert_summary(
             job_key,
@@ -146,9 +149,9 @@ def build_dummy_summary_content(email_body: str) -> str:
     return json.dumps(summary_payload)
 
 
-def call_bitnet_server(email_body: str) -> str:
+def call_bitnet_server(email: str) -> str:
     if get_summary_mode() == "dummy":
-        content = build_dummy_summary_content(email_body)
+        content = build_dummy_summary_content(email)
         print(f"content: {content}", flush=True)
         return content
 
@@ -177,10 +180,10 @@ def call_bitnet_server(email_body: str) -> str:
                 "items": {"type": "string"}
             },
             "importance": {
-                "type": "integer",
+                "type": "number",
                 "description": "Importance score (in decimals) from 0(not important) to 1(very important/urgent), based only on the email content.",
-                "minimum": 0,
-                "maximum": 3
+                "minimum": 0.0,
+                "maximum": 1.0
             }
         },
         "required": ["summary", "money", "time", "actions", "importance"],
@@ -190,7 +193,7 @@ def call_bitnet_server(email_body: str) -> str:
     prompt = (
         "Extract summary and information from the email into the required JSON fields. "
         "Do not invent facts. Use empty strings or [] when missing.\n\n"
-        f"EMAIL:\n{email_body}"
+        f"EMAIL:\n{email}"
     )
 
     payload = {
