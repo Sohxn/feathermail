@@ -385,12 +385,16 @@ export async function trashEmail(emailId: string) {
 // ============================================================
 // SUMMARY
 // ============================================================
-/**
- * Request a summary from the backend. We only send the raw email body and the email row id.
- */
 export async function summarize(emailBody: string, emailId: string) {
   return apiRequest('/api/summarize', {
     method: 'POST',
     body: JSON.stringify({ email_body: emailBody, email_id: emailId }),
+  });
+}
+
+export async function getSummaryStatus(jobKey: string) {
+  const querystring = new URLSearchParams({job_key: jobKey}).toString();
+  return apiRequest(`/api/summarize/status?${querystring}`, {
+    method: 'GET',
   });
 }

@@ -96,7 +96,7 @@ class SupabaseService:
         print(
             f"[SUPABASE] save_emails_batch called with {len(emails)} emails; "
             f"sample gmail_id={emails[0].get('gmail_id')} account_id={emails[0].get('account_id')}",
-            flush=True,
+            flush=True, 
         )
 
         for attempt in range(3):
@@ -191,6 +191,7 @@ class SupabaseService:
     def insert_summary(self, job_key: str, sender_email_id: str, model_name: str, content_hash: str, prompt_version: str, summary_text: str, user_id: str | None = None, ttl_days: int = 30):
         expires_at = (datetime.now(timezone.utc) + timedelta(days=ttl_days)).isoformat()
         row = {
+            "job_key": job_key,
             "user_id": user_id,
             "email_id": sender_email_id,
             "model_name": model_name,

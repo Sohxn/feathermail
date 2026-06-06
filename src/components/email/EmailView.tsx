@@ -269,6 +269,57 @@ export default function EmailView({ email, onReply }: EmailViewProps) {
   const archiveEmail = useEmailStore((state) => state.archiveEmail);
   const [emailWantsDarkBg, setEmailWantsDarkBg] = useState<boolean | null>(null);
 
+  // summary area hooks
+  const [summaryData, setSummaryData] = useState<any | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [showSummaryPlaceholder, setShowSummaryPlaceholder] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSummary() {
+      try {
+        setSummaryLoading(true);
+        setSummaryData(null);
+
+        const res = await api.summarize(email.body_text || "", email.id);
+
+        if (cancelled) return;
+
+        if (res.status === "cached" && res.summary) {
+          setSummaryData(JSON.parse(res.summary));
+          return;
+        }
+
+        if ((res.status === "accepted" || res.status === "processing") && res.job_key) {
+          for (let i = 0; i < 20; i++) {
+            await new Promise((r) => setTimeout(r, 1500));
+            const poll = await api.getSummaryStatus(res.job_key);
+
+            if (cancelled) return;
+
+            if (poll.status === "completed" && poll.summary) {
+              setSummaryData(JSON.parse(poll.summary));
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load summary", err);
+      } finally {
+        if (!cancelled) setSummaryLoading(false);
+      }
+    }
+
+    if (email?.id && email?.body_text) {
+      loadSummary();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+}, [email.id, email.body_text]);
+
   useEffect(() => {
     if (!email.is_read) {
       markAsRead(email.id);
@@ -388,6 +439,43 @@ export default function EmailView({ email, onReply }: EmailViewProps) {
       <div className="rounded-2xl shadow-xl p-4 flex items-center justify-center gap-2 min-h-[56px] bg-card">
         <span className="font-semibold text-sm">AI SUMMARY</span>
         <Sparkles className="w-4 h-4" />
+
+        {summaryLoading && <p>Generating summary...</p>}
+
+        {!summaryLoading && summaryData && (
+          <div className="space-y-3">
+            <p>{summaryData.summary}</p>
+
+            {summaryData.money && (
+              <div>
+                <div className="text-xs opacity-70">Money</div>
+                <p>{summaryData.money}</p>
+              </div>
+            )}
+
+            {summaryData.time && (
+              <div>
+                <div className="text-xs opacity-70">Time</div>
+                <p>{summaryData.time}</p>
+              </div>
+            )}
+
+            {Array.isArray(summaryData.actions) && summaryData.actions.length > 0 && (
+              <div>
+                <div className="text-xs opacity-70">Actions</div>
+                <ul className="list-disc pl-5">
+                  {summaryData.actions.map((action: string, i: number) => (
+                    <li key={i}>{action}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+      {!summaryLoading && !summaryData && (
+        <p className="opacity-70">No summary available yet.</p>
+      )}
       </div>
 
       {/* ── Email body ── */}

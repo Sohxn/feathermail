@@ -43,6 +43,7 @@ export interface Email {
   is_starred: boolean;
   is_archived: boolean;
   is_trashed: boolean;
+  
 
   // Joined data from account
   email_accounts?: {
